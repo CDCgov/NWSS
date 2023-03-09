@@ -15,7 +15,7 @@ This is the data repository for the [National Wastewater Surveillance System (NW
 * File names should be descriptive and indicate the software used. 
   * Example: cdc_trend_regression.R or cdc_trend_regression.PY
      
-   
+**Please reach out to nwss@cdc.gov if you have any questions**.
 
 
 ## Related Documents
