@@ -2,7 +2,7 @@
 
 This document provides details on two scripts executing the following:
 - Calculation of weekly WVALs at the site level
-- Subsequent aggregation of these values to the state, regional, and national levels to support the NWSS dashboards hosted [here](https://www.cdc.gov/nwss/index.html).
+- Subsequent aggregation of these values to the state, regional, and national levels to support the NWSS dashboards hosted [here](https://www.cdc.gov/nwss/index.html)
 
 Note that the WVAL pipeline is hosted within the [Palantir Foundry Code Repository](https://www.palantir.com/docs/foundry/code-repositories/overview/) development environment and is written using Python v3.8 and the [PySpark](https://spark.apache.org/docs/latest/api/python/index.html) library, an API for using Apache Spark and distributed computing.
 
@@ -23,18 +23,18 @@ The following filters are applied:
 
 ### Data Shaping and Outlier Handling
 
-- Through several steps, a `site_id_with_pcr_source_mlm_norm` column is created to ensure the WVALs are only calculated using self-consistent data.
+- Through several steps, a `site_id_with_pcr_source_mlm_norm` column is created to ensure the WVALs are only calculated using self-consistent data
 - New natural log transformed concentration variables are created from linear normalized concentration
 - Outliers with a Z-score > 4 are filtered
     - z-scores calculated for each `site_id_with_pcr_source_mlm_norm` combination
     - z-score = (sample concentration - mean concentration) / standard_deviation
 
 ### WVAL Calculation
-*Note - in the code, WVAL is referred to as `ww_index`.*
+*Note - in the code, WVAL is referred to as `ww_index_normed_ln`, denoting its use of log-transformed normalized concentration.*
 
 WVALs are calculated on a `site_id_with_pcr_source_mlm_norm` (hereafter, site-combo) basis for each sample.
 - A WVAL is only calculated for a sample if its site-combo has been sampling >= 42 days
-- WVAL is preferentially calculated using **flowpop-normalized** concentration, if available, and microbial-normalized concentration otherwise.
+- WVAL is preferentially calculated using **flowpop-normalized** concentration, if available, and microbial-normalized concentration otherwise
 - WVAL is first calculated using natural log transformed concentration as:
     - (sample concentration - baseline concentration) / standard deviation
     - see details on baseline calculation in subsection
@@ -69,12 +69,20 @@ In the most general sense, when we say "baseline" we are referring to the tenth 
 However, the time window / frequency of updating the baseline depends on how long a site-combo has been sampling:
 - For the first 6 months a site-combo is online, the baseline is updated each time there is a new sample
 - At the 6 month point, baseline is held constant at the last calculated value until the next update check point
-- After the 6 month point, the baseline is updated for a site-combo semi-yearly on January 1 and July 1.
+- After the 6 month point, the baseline is updated for a site-combo semi-yearly on January 1 and July 1
 
 After the preceding row to row calculations, the final step is to retrieve the last calculated baseline and standard deviation for a site combo.
 We then ensure that these "last values" are used to calculate the WVAL for all samples for a given site-combo.
 
 The motivation for this last step is to enable stable year-to-year comparisons wherein all the WVALs for a site-combo on a graph are referencing the same baseline.
+
+The image below illustrates this process over time for one site-combo:
+![](https://github.com/CDCgov/NWSS/blob/dev/docs/images/baseline_update_example.PNG)
+
+Here we see:
+- The site-combo comes online in March 2020 and iteratively updates until 6 months later the baseline is frozen in September 2020
+- The row-to-row baseline updates every 6 calendar months thereafter
+- The `last_baseline` variable matches the last calculated baseline and is set at that level for all rows/dates for the site-combo
 
 ##### Baseline Implementation Details
 
@@ -101,7 +109,7 @@ The baseline calculation has three major steps, each corresponding to 3 differen
     - The logic first assesses if the site-combo has been online < 182 days and calculates baseline iteratively for rows meeting that condition
     - If the site has been online > 182 days, the logic assesses if the current sample collect date (hereafter, date) is the closest date in time *after* either Jan 1 or Jul 1
         - To do this, the script determines what half of the year the current row's date is in: Jan to Jun or Jul to Dec
-        - Then the logic assesses if the number of days from the current date to either Jan 1 or Jul 1 (depending on half of year) matches the minimum distance for the window determined by the relevant site-combo, year, and half-year.
+        - Then the logic assesses if the number of days from the current date to either Jan 1 or Jul 1 (depending on half of year) matches the minimum distance for the window determined by the relevant site-combo, year, and half-year
         ```python
         # window to determine the minimum days to the nearest target date for each site in each half year
         window_min_date = Window.partitionBy(
@@ -143,9 +151,32 @@ While the baseline, standard deviation, and WVAL are initially calculated on a `
 To facilitate this goal, certain edge cases need to handled so that the WVALs which are being aggregated within a given week for a site are comparable.
 
 1. In a given week, only WVALs calculated with concentration variables using the same normalization method should be present.
-    - WVALs calculated using flowpop-normalized concentration are preferentially retained. WVALs calculated using microbial-normalized concentration are only retained if flowpop-backed WVALs are not present for the week.
+    - WVALs calculated using flowpop-normalized concentration are preferentially retained. WVALs calculated using microbial-normalized concentration are only retained if flowpop-backed WVALs are not present for the week
 2. If more than one source-MLM combination is reporting for a given site in a given week, only WVALs from the most recently onboarded source-MLM are retained for that week.
 
 ### Final Aggregation
 
 The dataset is aggregated by `site_id_with_pcr` and week (Sunday to Saturday) and **mean** WVAL is returned.
+
+## Dataset Preparation for Dashboard and State, Regional, and National Aggregation
+
+### Data Preparation
+- **Initial Data Filtering**: Filters the dataset to include only SARS-CoV-2 data, ensuring the `week_end` dates are not in the future and are after January 1, 2022
+- **Data Combination and Cleaning**: Performs a cross join on weeks and sites to obtain all combinations. It then cleans the data by removing duplicates and filtering out null values in `State` and `county_names`
+- **Date Filtering**: Implements additional filters based on the `sample_collect_date` to remove early sample collection dates introduced by the cross join
+
+### Region Classification
+- **Census Region Adjustment**: Adjusts the census regions to include specific territories (like Puerto Rico and Guam) and merges these with the main dataset
+
+### Data Aggregation for Regional Analysis
+- **Regional Data Aggregation**: Creates multiple datasets for different time periods (All Results, 1 Year, 6 Months, 45 Days) based on the normalized wastewater index
+- **Time Period Aggregation**: Aggregates data for different time periods across modified census regions, adds a 'National' region
+
+### State-Level Dataset Creation
+- **State Data Preparation**: Prepares the state-level data by creating placeholders for national and regional trends
+- **Aggregation by State**: Similar to regional data, aggregates state-level data for the same set of time periods
+
+### Final Data Assembly and Output
+- Joins national and regional trends into the state-level data so all can be show on the same plot
+
+
