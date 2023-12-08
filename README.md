@@ -7,13 +7,13 @@ This is the data repository for the [National Wastewater Surveillance System (NW
 
 ## Information on Submitting Code 
 
-* Each jurisdiction should create a subdirectory under [Jurisdiction codes](https://github.com/CDCgov/NWSS/tree/master/Jurisdiction%20codes). 
+* Each jurisdiction should create a subdirectory under [jurisdiction-scripts](/workspaces/NWSS/jurisdiction-scripts). 
   * Please use your jurisdiction's abbrevation used in reporting_jurisdiction in DCIPHER. 
-* Add any codes your jurisdiction would like to share. 
-  * When possible, please upload codes as separate files.
-  * It is helpful to include notes, packages used, etc.
-* File names should be descriptive and indicate the software used. 
-  * Example: cdc_trend_regression.R or cdc_trend_regression.PY
+* Add any scripts your jurisdiction would like to share. 
+  * When possible, please upload scripts as separate files.
+  * It is helpful to include notes (in markdown format, with .md files), packages used (with a requirements.txt file), etc.
+* File names should be descriptive and indicate the language used. 
+  * Example: cdc_trend_regression.R or cdc_trend_regression.py
      
 **Please reach out to nwss@cdc.gov if you have any questions**.
 
