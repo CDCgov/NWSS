@@ -4,6 +4,10 @@
         "ghcr.io/rocker-org/devcontainer-features/r-rig:1": {
             "version": "none",
             "installJupyterlab": true
+        },
+        "ghcr.io/devcontainers/features/python:1": {
+            "version": "3.11"
         }
-    }
+    },
+    "postCreateCommand": "pip3 install --user -r requirements.txt"
 }
