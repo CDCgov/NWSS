@@ -5,6 +5,5 @@
             "version": "none",
             "installJupyterlab": true
         }
-    },
-    "postCreateCommand": "pip3 install --user -r requirements.txt"
+    }
 }
