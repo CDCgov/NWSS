@@ -3,7 +3,7 @@ import sys
 import subprocess
 import numpy as np
 
-from pathlib import Path
+from pathlib import Path.     
 
 MODULE_NAME = "qsbart"
 LIB_DIR = "library"
