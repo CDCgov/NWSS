@@ -1,0 +1,8 @@
+"","site_id","collection_date","cdc_lineage","cdc_abundance","note","sample_id"
+"1","UD","2025-07-09","NoneDetected",0,"LowCoverageSample","UD20250709"
+"2","UE","2025-07-10","NoneDetected",0,"LowCoverageSample","UE20250710"
+"3","UC","2025-07-10","NoneDetected",0,"FailedVariantCalling","UC20250710"
+"4","UA","2025-07-10","LP.8.1",0.208097660009854,"Detection","UA20250710"
+"5","UA","2025-07-10","NB.1.8.1",0.326298183886807,"Detection","UA20250710"
+"6","UA","2025-07-10","XDV.1",0.46560415610334,"Detection","UA20250710"
+"7","UB","2025-07-10","NoneDetected",0,"LowCoverageSample","UB20250710"

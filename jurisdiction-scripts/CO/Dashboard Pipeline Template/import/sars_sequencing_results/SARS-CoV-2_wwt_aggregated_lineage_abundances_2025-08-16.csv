@@ -1,0 +1,6 @@
+"","site_id","collection_date","cdc_lineage","cdc_abundance","note","sample_id"
+"1","UD","2025-08-04","NoneDetected",0,"LowCoverageSample","UD20250804"
+"2","UB","2025-08-11","NB.1.8.1",0.374415072216014,"Detection","UB20250811"
+"3","UB","2025-08-11","XDV.1",0.470675329859007,"Detection","UB20250811"
+"4","UB","2025-08-11","XFG",0.154909597924979,"Detection","UB20250811"
+"5","UC","2025-08-11","NoneDetected",0,"LowCoverageSample","UC20250811"

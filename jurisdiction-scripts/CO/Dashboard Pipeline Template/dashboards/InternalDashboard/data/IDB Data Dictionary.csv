@@ -1,0 +1,19 @@
+Variable_Name,Variable_Type,Variable_Definition
+Utility,Text,Wastewater treatment facility where sample was sourced
+Sample_Collect_Date,Date (YYYY-MM-DD),Date wastewater sample was collected
+ViralConcentration_Linear,Numeric,The raw (unadjusted) number of gene copies detected per liter in the wastewater sample
+ViralConcentration_Log,Numeric,Logged number of gene copies detected per liter in the wastewater sample using log base 10
+Normalized_ViralConcentration_Linear,Numeric,Normalized concentration of viral genetic material in the wastewater. The concentration of viral genetic material in the wastewater standardized by the flow rate during the collection period for each sample and the population of the sewershed. Measured in million gene copies per person per day. 
+Normalized_ViralConcentration_Log,Numeric,Logged normalized concentration of viral genetic material in the wastewater using log base 10. These values are standardized by the flow rate during the collection period for each sample and the population of the sewershed. Measured in million gene copies per person per day. 
+Sitename_id,Text,Abbreviated identifier for sampling site
+Lab_id,Text,An ID assigned to a testing lab
+County_names,Text,Counties overlapping sewershed
+Sewershed_Population,Numeric,Estimated number of persons contributing to sewershed
+LPHA1,Text,Primary Local Public Health Agency
+LPHA2,Text,Secondary Local Public Health Agency
+LPHA3,Text,Tertiary Local Public Health Agency
+Sample_type,Text,"Sample collection method type. Composite samples include the duration of sampling and type of composite. A grab sample is defined as an individual sample collected without compositing or adding other samples, regardless of whether the sample matrix is liquid wastewater or sludge."
+Sample_id,Text,Identication of sample created using sitename_id and sample_collect_date
+Flow_rate,Numeric,"Volume of wastewater influent over a defined period time during which the sample was collected, measured in millions of gallons per day. "
+Pcr_target,Text,Pathogen tested though PCR quantification
+Lab_phase,Text,"Laboratory methods are designated as Lab Phase 1 and Lab Phase 2. These phases indicate the transition from our original laboratory instruments and partners (Colorado State University and the CDPHE Lab) in Lab Phase 1 to a single laboratory partner (CDPHE Lab) and a new instrument in Lab Phase 2. Lab Phase 1 refers to samples analyzed between Aug. 1, 2020 and Jul. 13, 2023. Lab Phase 2 refers to samples analyzed on or after July 14, 2023."

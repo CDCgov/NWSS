@@ -1,0 +1,3632 @@
+---
+title: "Wastewater Surveillance Dashboard Report"
+# runtime: shiny
+output:
+  html_document:
+    code_folding: hide
+    highlight: zenburn
+    number_sections: no
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+    toc_collapse: yes
+    toc_depth: 4
+    tock_float: no
+  word_document:
+    toc: yes
+    toc_depth: '4'
+  pdf_document:
+    toc: yes
+    toc_depth: '4'
+---
+
+```{r set up document}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width=8, fig.height=5, fig.align = "center")
+options(knitr.table.format = "html") 
+```
+ 
+<style>
+tr:hover {background-color: khaki !important;}  
+</style>
+
+```{r import and clean data, echo = FALSE}
+
+library(tidyr)
+library(readr)
+library(readxl)
+library(magrittr)
+library(dplyr)
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+library(stringr)
+library(plotly)
+library(ggplot2)
+library(ggthemes)
+library(lubridate)
+library(shiny)
+
+#set this to your computer name
+user_folder <- "[ENTER LOCAL DRIVE NAME HERE]" #can easily change here for other team members
+
+#assign working directories
+setwd(paste0("C:/Users/", user_folder, "/Documents/GitHub/WW-Data-Analytics-Repo/NWSS Dashboard Template"))
+
+#Read in reference sheets 
+IDBoutput <- read.csv("dashboards/InternalDashboard/data/wwdatafull.csv") %>%
+   mutate(measure_date = lubridate::as_date(measure_date, format = "%Y-%m-%d"))
+
+IDB_FluA_ST <- read.csv("dashboards/InternalDashboard/data/flua_hx_data.csv") %>%
+   mutate(sample_collect_date = lubridate::as_date(sample_collect_date, format = "%Y-%m-%d"))
+
+CountyCases_sars <- read.csv("dashboards/InternalDashboard/data/CountyCases_Sars-CoV-2.csv") %>%
+   mutate(Date = lubridate::as_date(Date, format = "%Y-%m-%d"))
+
+CountyCases_FluRSV <- read.csv("dashboards/InternalDashboard/data/CountyCases_FluRSV.csv") %>%
+   mutate(Date = lubridate::as_date(Date, format = "%Y-%m-%d"))
+
+CountyCases_FluRSV_hosp <- read.csv("dashboards/InternalDashboard/data/CountyCases_FluRSV_Hospitalization.csv") %>%
+   mutate(Date = lubridate::as_date(Date, format = "%Y-%m-%d"))
+
+IDB_masterlist <- read.csv("dashboards/InternalDashboard/data/IDB_masterlist.csv")
+
+Active_utilities <- IDB_masterlist %>%
+  filter(participation_status == "Active") %>%
+  select(wwtp_name) %>%
+  distinct()
+
+Active_utilities_sars <- IDB_masterlist %>%
+  filter(participation_status == "Active") %>%
+  filter(pcr_target == "sars-cov-2") %>%
+  select(wwtp_name) %>%
+  distinct()
+
+Active_utilities_rsv <- IDB_masterlist %>%
+  filter(participation_status == "Active") %>%
+  filter(pcr_target == "PanRSV") %>%
+  select(wwtp_name) %>%
+  distinct()
+
+Active_utilities_flua <- IDB_masterlist %>%
+  filter(participation_status == "Active") %>%
+  filter(pcr_target == "FLUAV") %>%
+  select(wwtp_name) %>%
+  distinct()
+
+Active_utilities_flub <- IDB_masterlist %>%
+  filter(participation_status == "Active") %>%
+  filter(pcr_target == "FLUBV") %>%
+  select(wwtp_name) %>%
+  distinct()
+
+
+#county per pathogen
+WWTPCounties <- read.csv("reference_sheets/WWTP_Counties_Reference.csv") %>%
+  separate_rows(overlapping_counties, sep = ", ")
+
+WWTPCounties_overlapping <- WWTPCounties %>%
+  separate_rows(overlapping_counties, sep = ", ") %>%
+  select(utility, overlapping_counties) %>%
+  rename(county = overlapping_counties) %>%
+  filter(!is.na(county))
+
+WWTPCounties <- WWTPCounties %>%
+  select(utility, primary_county) %>%
+  rename(county = primary_county) %>%
+  distinct() %>%
+  rbind(WWTPCounties_overlapping) %>%
+  arrange(utility)
+
+unique_county_sars <- IDBoutput %>%
+  filter(measure_date >= Sys.Date() - 21) %>%
+  left_join(WWTPCounties, by = "utility", relationship = "many-to-many") %>%
+  filter(pcr_target == "sars-cov-2" & lab_phase == "Lab Phase 3") %>%
+  select(c(county)) %>%
+  distinct() %>%
+  arrange(county)
+
+unique_county_rsv <- IDBoutput %>%
+  filter(measure_date >= Sys.Date() - 21) %>%
+  left_join(WWTPCounties, by = "utility", relationship = "many-to-many") %>%
+  filter(pcr_target == "RSV A + B Combined" & lab_phase == "Lab Phase 3") %>%
+  select(c(county)) %>%
+  distinct() %>%
+  arrange(county)
+
+unique_county_flua <- IDBoutput %>%
+  filter(measure_date >= Sys.Date() - 21) %>%
+  left_join(WWTPCounties, by = "utility", relationship = "many-to-many") %>%
+  filter(pcr_target == "FLUAV" & lab_phase == "Lab Phase 3") %>%
+  select(c(county)) %>%
+  distinct() %>%
+  arrange(county)
+
+unique_county_H5 <- IDBoutput %>%
+  filter(measure_date >= Sys.Date() - 21) %>%
+  left_join(WWTPCounties, by = "utility", relationship = "many-to-many") %>%
+  filter(pcr_target == "H5" & lab_phase == "Lab Phase 3") %>%
+  select(c(county)) %>%
+  distinct() %>%
+  arrange(county)
+
+unique_county_H3 <- IDBoutput %>%
+  filter(measure_date >= Sys.Date() - 21) %>%
+  left_join(WWTPCounties, by = "utility", relationship = "many-to-many") %>%
+  filter(pcr_target == "H3" & lab_phase == "Lab Phase 3") %>%
+  select(c(county)) %>%
+  distinct() %>%
+  arrange(county)
+
+unique_county_H1 <- IDBoutput %>%
+  filter(measure_date >= Sys.Date() - 21) %>%
+  left_join(WWTPCounties, by = "utility", relationship = "many-to-many") %>%
+  filter(pcr_target == "H1" & lab_phase == "Lab Phase 3") %>%
+  select(c(county)) %>%
+  distinct() %>%
+  arrange(county)
+
+
+## Read in data
+fulldata <-
+  list.files(path = "output/compiled_data") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "csv") %>%
+  filter(grepl("1_CDPHE_Wastewater_Data_", filename, fixed = TRUE)) %>%
+  dplyr::mutate(date = str_remove(filename, "1_CDPHE_Wastewater_Data_") %>%
+                  str_remove(".csv") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/compiled_data/",
+         .) %>%
+  read_csv()
+
+IDB_trends <- 
+  list.files(path = "output/trends/bsts_output") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "xlsx") %>%
+  filter(grepl("trend_summary_", filename, fixed = TRUE)) %>%
+  dplyr::mutate(date = str_remove(filename, "trend_summary_") %>%
+                  str_remove("_21d.xlsx") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/trends/bsts_output/",
+         .) %>%
+  read_xlsx() %>%
+  mutate_all(~ if_else(is.na(.), "", as.character(.)))
+
+IDB_detectionstatus_sars <- 
+  list.files(path = "output/trends/detection_status") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "xlsx") %>%
+  filter(grepl("detectionstatus_summary_", filename, fixed = TRUE)) %>%
+  filter(!grepl("_Public", filename, fixed = TRUE)) %>%  # Exclude filenames with "_Public"
+  dplyr::mutate(date = str_remove(filename, "detectionstatus_summary_") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/trends/detection_status/",
+         .) %>%
+  read_xlsx(sheet = "sars-cov-2") %>%
+  mutate(across(everything(), as.character)) %>%  # Force all columns to character
+  mutate(across(everything(), ~ replace_na(., "")))  # Replace NA with ""  
+
+
+IDB_detectionstatus_rsv <- 
+  list.files(path = "output/trends/detection_status") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "xlsx") %>%
+  filter(grepl("detectionstatus_summary_", filename, fixed = TRUE)) %>%
+    filter(!grepl("_Public", filename, fixed = TRUE)) %>%  # Exclude filenames with "_Public"
+  dplyr::mutate(date = str_remove(filename, "detectionstatus_summary_") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/trends/detection_status/",
+         .) %>%
+  read_xlsx(sheet = "PanRSV") %>%
+  mutate(across(everything(), as.character)) %>%  # Force all columns to character
+  mutate(across(everything(), ~ replace_na(., "")))  # Replace NA with ""  
+
+IDB_detectionstatus_flua <- 
+  list.files(path = "output/trends/detection_status") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "xlsx") %>%
+  filter(grepl("detectionstatus_summary_", filename, fixed = TRUE)) %>%
+  filter(!grepl("_Public", filename, fixed = TRUE)) %>%  # Exclude filenames with "_Public"
+  dplyr::mutate(date = str_remove(filename, "detectionstatus_summary_") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/trends/detection_status/",
+         .) %>%
+  read_xlsx(sheet = "Flu_A") %>%
+  mutate(across(everything(), as.character)) %>%  # Force all columns to character
+  mutate(across(everything(), ~ replace_na(., "")))  # Replace NA with ""  
+
+IDB_detectionstatus_flub <- 
+  list.files(path = "output/trends/detection_status") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "xlsx") %>%
+  filter(grepl("detectionstatus_summary_", filename, fixed = TRUE)) %>%
+  filter(!grepl("_Public", filename, fixed = TRUE)) %>%  # Exclude filenames with "_Public"
+  dplyr::mutate(date = str_remove(filename, "detectionstatus_summary_") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/trends/detection_status/",
+         .) %>%
+  read_xlsx(sheet = "Flu_B") %>%
+  mutate(across(everything(), as.character)) %>%  # Force all columns to character
+  mutate(across(everything(), ~ replace_na(., "")))  # Replace NA with ""  
+
+IDB_detectionstatus_h5 <- 
+  list.files(path = "output/trends/detection_status") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "xlsx") %>%
+  filter(grepl("detectionstatus_summary_", filename, fixed = TRUE)) %>%
+  filter(!grepl("_Public", filename, fixed = TRUE)) %>%  # Exclude filenames with "_Public"
+  dplyr::mutate(date = str_remove(filename, "detectionstatus_summary_") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/trends/detection_status/",
+         .) %>%
+  read_xlsx(sheet = "H5") %>%
+  mutate(across(everything(), as.character)) %>%  # Force all columns to character
+  mutate(across(everything(), ~ replace_na(., "")))  # Replace NA with ""  
+
+IDB_detectionstatus_h3 <- 
+  list.files(path = "output/trends/detection_status") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "xlsx") %>%
+  filter(grepl("detectionstatus_summary_", filename, fixed = TRUE)) %>%
+  filter(!grepl("_Public", filename, fixed = TRUE)) %>%  # Exclude filenames with "_Public"
+  dplyr::mutate(date = str_remove(filename, "detectionstatus_summary_") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/trends/detection_status/",
+         .) %>%
+  read_xlsx(sheet = "H3") %>%
+  mutate(across(everything(), as.character)) %>%  # Force all columns to character
+  mutate(across(everything(), ~ replace_na(., "")))  # Replace NA with ""  
+
+IDB_detectionstatus_h1 <- 
+  list.files(path = "output/trends/detection_status") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "xlsx") %>%
+  filter(grepl("detectionstatus_summary_", filename, fixed = TRUE)) %>%
+  filter(!grepl("_Public", filename, fixed = TRUE)) %>%  # Exclude filenames with "_Public"
+  dplyr::mutate(date = str_remove(filename, "detectionstatus_summary_") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/trends/detection_status/",
+         .) %>%
+  read_xlsx(sheet = "H1") %>%
+  mutate(across(everything(), as.character)) %>%  # Force all columns to character
+  mutate(across(everything(), ~ replace_na(., "")))  # Replace NA with ""  
+
+pdb_verification <-
+  list.files(path = "dashboards/PublicDashboard") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "csv") %>%
+  filter(grepl("Public_Dashboard_Data_", filename, fixed = TRUE)) %>%
+  dplyr::mutate(date = str_remove(filename, "Public_Dashboard_Data_") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("dashboards/PublicDashboard/",
+         .) %>%
+  read_csv()
+
+
+pdb_trends <-
+  list.files(path = "dashboards/PublicDashboard") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "xlsx") %>%
+  filter(grepl("PDB_trends", filename, fixed = TRUE)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("dashboards/PublicDashboard/",
+         .) %>%
+  read_excel()
+
+open_portal_verification <-
+  list.files(path = "dashboards/PublicDashboard") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "csv") %>%
+  filter(grepl("OpenPortal_Data_", filename, fixed = TRUE)) %>%
+  dplyr::mutate(date = str_remove(filename, "OpenPortal_Data_") %>%
+                  str_remove(".csv") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("dashboards/PublicDashboard/",
+         .) %>%
+  read_csv() 
+
+
+NWSSsubmission <- 
+  list.files(path = "output/compiled_data") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "csv") %>%
+  filter(grepl("2_CDPHE_Wastewater_Data_", filename, fixed = TRUE)) %>%
+  dplyr::mutate(date = str_remove(filename, "2_CDPHE_Wastewater_Data_") %>%
+                  str_remove(".csv") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/compiled_data/",
+         .) %>%
+  read_csv() %>%
+  select(wwtp_name, pcr_target) %>%
+  distinct()
+
+
+
+
+## Read in QC Reports
+missing_pcrtarget <-
+  list.files(path = "output/validation_reports") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "csv") %>%
+  filter(grepl("PCR_Target_Check_Report_", filename, fixed = TRUE)) %>%
+  dplyr::mutate(date = str_remove(filename, "PCR_Target_Check_Report_") %>%
+                  str_remove(".csv") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/validation_reports/",
+         .) %>%
+  read_csv()
+
+qcinternal_report <-
+  list.files(path = "output/validation_reports") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "csv") %>%
+  filter(grepl("failed_qc_internal_", filename, fixed = TRUE)) %>%
+  dplyr::mutate(date = str_remove(filename, "failed_qc_internal_") %>%
+                  str_remove(".csv") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/validation_reports/",
+         .) %>%
+  read_csv()
+
+inactive_samples <-
+  list.files(path = "output/validation_reports") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "csv") %>%
+  filter(grepl("participation_issues_", filename, fixed = TRUE)) %>%
+  dplyr::mutate(date = str_remove(filename, "participation_issues_") %>%
+                  str_remove(".csv") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/validation_reports/",
+         .) %>%
+  read_csv()
+
+
+quality_flag_yes_report <-
+  list.files(path = "output/validation_reports") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "csv") %>%
+  filter(grepl("QualityFlag_yes_", filename, fixed = TRUE)) %>%
+  dplyr::mutate(date = str_remove(filename, "QualityFlag_yes_") %>%
+                  str_remove(".csv") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/validation_reports/",
+         .) %>%
+  read_csv()
+
+quality_flag_issues_report <-
+  list.files(path = "output/validation_reports") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "csv") %>%
+  filter(grepl("QualityFlag_Issues_", filename, fixed = TRUE)) %>%
+  dplyr::mutate(date = str_remove(filename, "QualityFlag_Issues_") %>%
+                  str_remove(".csv") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/validation_reports/",
+         .) %>%
+  read_csv() 
+
+extractionmethod_report <-
+  list.files(path = "output/validation_reports") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "csv") %>%
+  filter(grepl("ExtractionMethod_Check_Report_", filename, fixed = TRUE)) %>%
+  dplyr::mutate(date = str_remove(filename, "ExtractionMethod_Check_Report_") %>%
+                  str_remove(".csv") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/validation_reports/",
+         .) %>%
+  read_csv()
+
+ntc_amplify_report <-
+  list.files(path = "output/validation_reports") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "csv") %>%
+  filter(grepl("ntc_amplify_report_", filename, fixed = TRUE)) %>%
+  dplyr::mutate(date = str_remove(filename, "ntc_amplify_report_") %>%
+                  str_remove(".csv") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/validation_reports/",
+         .) %>%
+  read_csv()
+
+missing_flowsample_report <-
+  list.files(path = "output/validation_reports") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "csv") %>%
+  filter(grepl("Flow_Rate_Check_Report_", filename, fixed = TRUE)) %>%
+  dplyr::mutate(date = str_remove(filename, "Flow_Rate_Check_Report_") %>%
+                  str_remove(".csv") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/validation_reports/",
+         .) %>%
+  read_csv() 
+
+ND_values_report <-
+  list.files(path = "output/validation_reports") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "csv") %>%
+  filter(grepl("ND_Value_Check_Report_", filename, fixed = TRUE)) %>%
+  dplyr::mutate(date = str_remove(filename, "ND_Value_Check_Report_") %>%
+                  str_remove(".csv") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/validation_reports/",
+         .) %>%
+  read_csv() %>%
+  arrange(pcr_target, desc(sample_collect_date), wwtp_name)
+
+
+
+extra_samples <-
+  list.files(path = "output/validation_reports") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "csv") %>%
+  filter(grepl("extra_results_", filename, fixed = TRUE)) %>%
+  dplyr::mutate(date = str_remove(filename, "extra_results_") %>%
+                  str_remove(".csv") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/validation_reports/",
+         .) %>%
+  read_csv() 
+# 
+# nwws_flags_recefftarget <- 
+#   list.files(path = "output/validation_reports") %>%
+#   data.frame() %>%
+#   `colnames<-`("filename") %>%
+#   mutate(extension = xfun::file_ext(filename)) %>%
+#   filter(extension %in% "csv") %>%
+#   filter(grepl("NWSS_actionrequired_rec_eff_target_name_", filename, fixed = TRUE)) %>%
+#   dplyr::mutate(date = str_remove(filename, "NWSS_actionrequired_rec_eff_target_name_") %>%
+#                   str_remove(".csv") %>%
+#                   ymd()) %>%
+#   filter(date == max(date)) %>%
+#   select(filename) %>%
+#   unlist() %>%
+#   paste0("output/validation_reports/",
+#          .) %>%
+#   read_csv()
+# 
+# nwws_flags_flowrates <- 
+#   list.files(path = "output/validation_reports") %>%
+#   data.frame() %>%
+#   `colnames<-`("filename") %>%
+#   mutate(extension = xfun::file_ext(filename)) %>%
+#   filter(extension %in% "csv") %>%
+#   filter(grepl("NWSS_missingflowrates_", filename, fixed = TRUE)) %>%
+#   dplyr::mutate(date = str_remove(filename, "NWSS_missingflowrates_") %>%
+#                   str_remove(".csv") %>%
+#                   ymd()) %>%
+#   filter(date == max(date)) %>%
+#   select(filename) %>%
+#   unlist() %>%
+#   paste0("output/validation_reports/",
+#          .) %>%
+#   read_csv()
+# 
+# nwws_flags_epaid <- 
+#   list.files(path = "output/validation_reports") %>%
+#   data.frame() %>%
+#   `colnames<-`("filename") %>%
+#   mutate(extension = xfun::file_ext(filename)) %>%
+#   filter(extension %in% "csv") %>%
+#   filter(grepl("NWSS_actionrequired_epaid_", filename, fixed = TRUE)) %>%
+#   dplyr::mutate(date = str_remove(filename, "NWSS_actionrequired_epaid_") %>%
+#                   str_remove(".csv") %>%
+#                   ymd()) %>%
+#   filter(date == max(date)) %>%
+#   select(filename) %>%
+#   unlist() %>%
+#   paste0("output/validation_reports/",
+#          .) %>%
+#   read_csv()
+# 
+# nwws_flags_sampletype <- 
+#   list.files(path = "output/validation_reports") %>%
+#   data.frame() %>%
+#   `colnames<-`("filename") %>%
+#   mutate(extension = xfun::file_ext(filename)) %>%
+#   filter(extension %in% "csv") %>%
+#   filter(grepl("NWSS_actionrequired_sampletype_", filename, fixed = TRUE)) %>%
+#   dplyr::mutate(date = str_remove(filename, "NWSS_actionrequired_sampletype_") %>%
+#                   str_remove(".csv") %>%
+#                   ymd()) %>%
+#   filter(date == max(date)) %>%
+#   select(filename) %>%
+#   unlist() %>%
+#   paste0("output/validation_reports/",
+#          .) %>%
+#   read_csv()
+# 
+# nwws_flags_spikeconc <- 
+#   list.files(path = "output/validation_reports") %>%
+#   data.frame() %>%
+#   `colnames<-`("filename") %>%
+#   mutate(extension = xfun::file_ext(filename)) %>%
+#   filter(extension %in% "csv") %>%
+#   filter(grepl("NWSS_actionrequired_rec_eff_spike_conc_", filename, fixed = TRUE)) %>%
+#   dplyr::mutate(date = str_remove(filename, "NWSS_actionrequired_rec_eff_spike_conc_") %>%
+#                   str_remove(".csv") %>%
+#                   ymd()) %>%
+#   filter(date == max(date)) %>%
+#   select(filename) %>%
+#   unlist() %>%
+#   paste0("output/validation_reports/",
+#          .) %>%
+#   read_csv()
+
+datacheck_report_sars <-
+  list.files(path = "output/validation_reports") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "xlsx") %>%
+  filter(grepl("DataCheck_35mL_", filename, fixed = TRUE)) %>%
+  dplyr::mutate(date = str_remove(filename, "DataCheck_35mL_") %>%
+                  str_remove(".xlsx") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/validation_reports/",
+         .) %>%
+  read_xlsx(sheet = "sars-cov-2") 
+
+datacheck_report_rsv <-
+  list.files(path = "output/validation_reports") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "xlsx") %>%
+  filter(grepl("DataCheck_35mL_", filename, fixed = TRUE)) %>%
+  dplyr::mutate(date = str_remove(filename, "DataCheck_35mL_") %>%
+                  str_remove(".xlsx") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/validation_reports/",
+         .) %>%
+  read_xlsx(sheet = "PanRSV") 
+
+datacheck_report_flua <-
+  list.files(path = "output/validation_reports") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "xlsx") %>%
+  filter(grepl("DataCheck_35mL_", filename, fixed = TRUE)) %>%
+  dplyr::mutate(date = str_remove(filename, "DataCheck_35mL_") %>%
+                  str_remove(".xlsx") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/validation_reports/",
+         .) %>%
+  read_xlsx(sheet = "FLUAV")
+
+datacheck_report_flub <-
+  list.files(path = "output/validation_reports") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "xlsx") %>%
+  filter(grepl("DataCheck_35mL_", filename, fixed = TRUE)) %>%
+  dplyr::mutate(date = str_remove(filename, "DataCheck_35mL_") %>%
+                  str_remove(".xlsx") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/validation_reports/",
+         .) %>%
+  read_xlsx(sheet = "FLUBV") 
+
+datacheck_report_H5 <-
+  list.files(path = "output/validation_reports") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "xlsx") %>%
+  filter(grepl("DataCheck_35mL_", filename, fixed = TRUE)) %>%
+  dplyr::mutate(date = str_remove(filename, "DataCheck_35mL_") %>%
+                  str_remove(".xlsx") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/validation_reports/",
+         .) %>%
+  read_xlsx(sheet = "H5")
+
+datacheck_report_H3 <-
+  list.files(path = "output/validation_reports") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "xlsx") %>%
+  filter(grepl("DataCheck_35mL_", filename, fixed = TRUE)) %>%
+  dplyr::mutate(date = str_remove(filename, "DataCheck_35mL_") %>%
+                  str_remove(".xlsx") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/validation_reports/",
+         .) %>%
+  read_xlsx(sheet = "H3")
+
+datacheck_report_H1 <-
+  list.files(path = "output/validation_reports") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "xlsx") %>%
+  filter(grepl("DataCheck_35mL_", filename, fixed = TRUE)) %>%
+  dplyr::mutate(date = str_remove(filename, "DataCheck_35mL_") %>%
+                  str_remove(".xlsx") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/validation_reports/",
+         .) %>%
+  read_xlsx(sheet = "H1")
+
+duplicates_IDB <- list.files(path = "output/validation_reports") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "csv") %>%
+  filter(grepl("duplicatedata_IDB_", filename, fixed = TRUE)) %>%
+  dplyr::mutate(date = str_remove(filename, "duplicatedata_IDB_") %>%
+                  str_remove(".csv") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/validation_reports/",
+         .) %>%
+  read.csv()
+
+duplicates_PDB <- list.files(path = "output/validation_reports") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "csv") %>%
+  filter(grepl("duplicatedata_PDB_", filename, fixed = TRUE)) %>%
+  dplyr::mutate(date = str_remove(filename, "duplicatedata_PDB_") %>%
+                  str_remove(".csv") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/validation_reports/",
+         .) %>%
+  read.csv()
+
+duplicates_ODP <- list.files(path = "output/validation_reports") %>%
+  data.frame() %>%
+  `colnames<-`("filename") %>%
+  mutate(extension = xfun::file_ext(filename)) %>%
+  filter(extension %in% "csv") %>%
+  filter(grepl("duplicatedata_ODP_", filename, fixed = TRUE)) %>%
+  dplyr::mutate(date = str_remove(filename, "duplicatedata_ODP_") %>%
+                  str_remove(".csv") %>%
+                  ymd()) %>%
+  filter(date == max(date)) %>%
+  select(filename) %>%
+  unlist() %>%
+  paste0("output/validation_reports/",
+         .) %>%
+  read.csv()
+
+
+```
+
+
+Last Updated: **`r Sys.Date()`**
+
+
+## Section One: Verify Correct *Before* Deployment {.tabset}
+
+- These samples need to be verified ***PRIOR*** to deploying dashboards.
+- Data is not filtered by date or utility activation status.
+
+### **Missing PCR Targets**
+
+- QC Report File: **PCR_Target_Check_Report_[date]**
+- These samples are **not included the final output** for either dashboard as we don't know what pathogen this data belongs to. 
+- Please check with the lab to determine what the ***pcr_target*** should be for the following samples:
+
+```{r missing pcr_target}
+
+if (missing_pcrtarget$wwtp_name[1] == "no data") {
+  print("No missing PCR targets")
+} else {
+  kable(missing_pcrtarget, align = "c") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+}
+
+```
+
+<br>
+
+### **Duplicates IDB**
+
+- QC Report File: **duplicatedata_IDB_[date]**
+- If there are duplicates displayed, please investigate the cause and fix on the original results file in the import folder (if possible)
+
+```{r duplicates IDB}
+
+if (duplicates_IDB$utility[1] == "no data") {
+  print("No duplicate data on IDB output")
+} else {
+  kable(duplicates_IDB, align = "c") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+}
+
+```
+
+<br>
+
+### **Duplicates PFD**
+
+- QC Report File: **duplicatedata_PDB_[date]**
+- If there are duplicates displayed, please investigate the cause and fix on the original results file in the import folder (if possible)
+
+```{r duplicates PDB}
+
+if (duplicates_PDB$utility[1] == "no data") {
+  print("No duplicate data on PFD output")
+} else {
+  kable(duplicates_PDB, align = "c") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+}
+
+```
+
+<br>
+
+### **Duplicates ODP**
+
+- QC Report File: **duplicatedata_ODP_[date]**
+- If there are duplicates displayed, please investigate the cause and fix on the original results file in the import folder (if possible)
+
+```{r duplicates ODP}
+
+if (duplicates_ODP$utility[1] == "no data") {
+  print("No duplicate data on Open Portal output")
+} else {
+  kable(duplicates_ODP, align = "c") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+}
+
+```
+
+<br>
+
+
+
+### **QC Internal Issues**
+- QC Report File: **failed_qc_internal_[date]**
+- These are the samples that have qc_interal = "FAILED".
+- Verify with lab why we received these (they should be re-run and not sent to us).
+- ***DO NOT ADD THESE TO DASHBOARD*** without lab/supervisor approval.
+
+```{r qc internal issues}
+
+
+if (qcinternal_report$reporting_jurisdiction[1] == "no data") {
+  print("No failed QC internal samples")
+} else {
+  kable(qcinternal_report, align = "c") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+}
+```
+
+<br>
+
+
+### **Verify Correct Utility Name**
+
+- QC Report File: **participation_issues_[date]**
+- The samples below belong to a **utility not listed on Activation Status Google Sheet**. 
+- Verify if we need to add new utility to the Activation Status Google Sheet or fix the typo.
+
+```{r inactive utilities}
+
+
+if (inactive_samples$wwtp_name[1] == "no data") {
+  print("All utilities have been accounted for. The Activation Status sheet is not missing metadata.")
+} else {
+    inactive_samples <- inactive_samples %>%
+        select(pcr_target, wwtp_name, Surv_System, activation_start, activation_end, 
+        sample_collect_date, test_result_date, pcr_target_avg_conc, sample_id, lab_phase) %>%
+        group_by(pcr_target, wwtp_name) %>%
+        arrange(pcr_target, desc(sample_collect_date), wwtp_name)
+
+  kable(inactive_samples, align = "c") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+}
+```
+
+
+### **Hx Trace Detections**
+- ****** LET SUPERVISOR KNOW IF WE HAVE A NEW TRACE DETECTION !! ******
+- From 1_CDPHE_Wastewater_Data_[date] file, filtered for last 31 days, arranged by date
+- This report includes all flu trace detections and real detections.
+- Trace Detection: pcr_target_below_LOD = yes, pcr_target_avg_conc > 0 (prior to LOD data manipulation)
+- Not Detected: pcr_target_below_LOD = yes, pcr_target_avg_conc = 0 (prior to LOD data manipulation; not shown in this tab)
+- Detected: pcr_target_below_LOD = no, pcr_target_avg_conc >= 1200 (prior to LOD data manipulation, for LP3+)
+```{r hx trace detactions list}
+
+
+subset <- fulldata %>%
+  filter(pcr_target == "H5")%>%
+  mutate(detect_status = 
+           case_when(pcr_target_below_lod == "yes" & pcr_target_avg_conc > 0 ~ "Trace", 
+                     pcr_target_below_lod == "yes" | pcr_target_avg_conc == 0 ~ "Not detected", 
+                     pcr_target_below_lod == "no" & pcr_target_avg_conc >= 1200 ~ "Detected", 
+                     TRUE ~ "no category")) %>%
+  mutate(sample_collect_date = as.Date(sample_collect_date)) %>%
+  select(wwtp_name, pcr_target, sample_collect_date, pcr_target_avg_conc, pcr_target_below_lod, detect_status) %>%
+  filter(sample_collect_date >= Sys.Date() - 31) %>%
+  arrange(desc(sample_collect_date)) %>%
+  filter(detect_status != "Not detected")
+
+write.csv(subset, paste0("K:/Wastewater Surveillance/R codes/output/QC Reports/Flu_Hx_Trace_Detections_", Sys.Date(), ".csv"))
+
+
+kable(subset, align = "c") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+```
+
+
+<br>
+<br>
+<br>
+
+## Section Two: Recent Trends & Detection Status {.tabset}
+
+### Sars-CoV-2 Trends
+
+- Here are the most recent Sars-CoV-2 trends for each utility.
+- Pulled from trend_summary_[date] report in trends folder.
+
+```{r sars trends}
+
+
+count_SInc <- IDB_trends %>%
+  filter(!`Steady Increase` == "") %>%  
+  nrow()
+
+count_Inc <- IDB_trends %>%
+  filter(!`Increase` == "") %>%  
+  nrow()
+
+count_Plat <- IDB_trends %>%
+  filter(!`Plateau` == "") %>%  
+  nrow()
+
+count_Decr <- IDB_trends %>%
+  filter(!`Decrease` == "") %>%  
+  nrow()
+
+count_SDecr <- IDB_trends %>%
+  filter(!`Steady Decrease` == "") %>%  
+  nrow()
+
+count_insuff <- IDB_trends %>%
+  filter(!`Insufficient Data` == "") %>%  
+  nrow()
+
+count_inactive <- IDB_trends %>%
+  filter(!`Inactive Utility` == "") %>%  
+  nrow()
+
+trend_colnames <- c(paste0("Steady Increase (", count_SInc, ")"),
+                    paste0("Increase (", count_Inc, ")"),
+                    paste0("Plateau (", count_Plat, ")"),
+                    paste0("Decrease (", count_Decr, ")"),
+                    paste0("Steady Decrease (", count_SDecr, ")"),
+                    paste0("Insufficient Data (", count_insuff, ")"),
+                    paste0("Inactive Utility (", count_inactive, ")")
+
+                    )
+
+colnames(IDB_trends) <- trend_colnames
+
+kable(IDB_trends, align = "c", caption = "Sars-Cov-2 Trends") %>%
+  kable_styling() %>%
+  kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+
+```
+
+### Sars-CoV-2 Detection Status
+
+- Here are the most recent Sars-CoV-2 detection status for each utility.
+- Pulled from detectionstatus_summary_[date] report in output folder.
+
+```{r sars detections}
+
+count_persistentdetection <- IDB_detectionstatus_sars %>%
+  filter(!`Persistent detection` == "") %>%  
+  nrow()
+
+count_detection <- IDB_detectionstatus_sars %>%
+  filter(!`Detection` == "") %>%  
+  nrow()
+
+count_norecentdetection <- IDB_detectionstatus_sars %>%
+  filter(!`No recent detection` == "") %>%  
+  nrow()
+
+count_norecentdata <- IDB_detectionstatus_sars %>%
+  filter(!`No recent data` == "") %>%  
+  nrow()
+
+
+
+
+detectionstatus_colnames <- c(paste0("Persistent detection (", count_persistentdetection, ")"),
+                              paste0("Detection (", count_detection, ")"),
+                              paste0("No recent detection (", count_norecentdetection, ")"),
+                              paste0("No recent data (", count_norecentdata, ")")
+                    )
+
+colnames(IDB_detectionstatus_sars) <- detectionstatus_colnames
+
+kable(IDB_detectionstatus_sars, align = "c", caption = "Sars-Cov-2 Detection Status") %>%
+  kable_styling() %>%
+  kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+
+```
+
+
+
+### PanRSV
+
+- Here are the most recent PanRSV detection status for each utility.
+- Pulled from detectionstatus_summary_[date] report in output folder.
+
+```{r rsv detections}
+
+count_persistentdetection <- IDB_detectionstatus_rsv %>%
+  filter(!`Persistent detection` == "") %>%  
+  nrow()
+
+count_detection <- IDB_detectionstatus_rsv %>%
+  filter(!`Detection` == "") %>%  
+  nrow()
+
+count_norecentdetection <- IDB_detectionstatus_rsv %>%
+  filter(!`No recent detection` == "") %>%  
+  nrow()
+
+count_norecentdata <- IDB_detectionstatus_rsv %>%
+  filter(!`No recent data` == "") %>%  
+  nrow()
+
+
+detectionstatus_colnames <- c(paste0("Persistent detection (", count_persistentdetection, ")"),
+                              paste0("Detection (", count_detection, ")"),
+                              paste0("No recent detection (", count_norecentdetection, ")"),
+                              paste0("No recent data (", count_norecentdata, ")")
+                    )
+
+colnames(IDB_detectionstatus_rsv) <- detectionstatus_colnames
+
+kable(IDB_detectionstatus_rsv, align = "c", caption = "PanRSV Detection Status") %>%
+  kable_styling() %>%
+  kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+
+```
+
+
+
+
+### Influenza A
+
+- Here are the most recent Influenza A detection status for each utility.
+- Pulled from detectionstatus_summary_[date] report in output folder.
+
+```{r flu a detections}
+
+count_persistentdetection <- IDB_detectionstatus_flua %>%
+  filter(!`Persistent detection` == "") %>%  
+  nrow()
+
+count_detection <- IDB_detectionstatus_flua %>%
+  filter(!`Detection` == "") %>%  
+  nrow()
+
+count_norecentdetection <- IDB_detectionstatus_flua %>%
+  filter(!`No recent detection` == "") %>%  
+  nrow()
+
+count_norecentdata <- IDB_detectionstatus_flua %>%
+  filter(!`No recent data` == "") %>%  
+  nrow()
+
+
+
+detectionstatus_colnames <- c(paste0("Persistent detection (", count_persistentdetection, ")"),
+                              paste0("Detection (", count_detection, ")"),
+                              paste0("No recent detection (", count_norecentdetection, ")"),
+                              paste0("No recent data (", count_norecentdata, ")")
+                    )
+
+colnames(IDB_detectionstatus_flua) <- detectionstatus_colnames
+
+kable(IDB_detectionstatus_flua, align = "c", caption = "Influenza A Detection Status") %>%
+  kable_styling() %>%
+  kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+
+```
+
+
+### Influenza B
+
+- Here are the most recent Influenza B detection status for each utility.
+- Pulled from detectionstatus_summary_[date] report in output folder.
+
+```{r flu b detections}
+
+count_persistentdetection <- IDB_detectionstatus_flub %>%
+  filter(!`Persistent detection` == "") %>%  
+  nrow()
+
+count_detection <- IDB_detectionstatus_flub %>%
+  filter(!`Detection` == "") %>%  
+  nrow()
+
+count_norecentdetection <- IDB_detectionstatus_flub %>%
+  filter(!`No recent detection` == "") %>%  
+  nrow()
+
+count_norecentdata <- IDB_detectionstatus_flub %>%
+  filter(!`No recent data` == "") %>%  
+  nrow()
+
+
+
+
+detectionstatus_colnames <- c(paste0("Persistent detection (", count_persistentdetection, ")"),
+                              paste0("Detection (", count_detection, ")"),
+                              paste0("No recent detection (", count_norecentdetection, ")"),
+                              paste0("No recent data (", count_norecentdata, ")")
+                    )
+
+colnames(IDB_detectionstatus_flub) <- detectionstatus_colnames
+
+kable(IDB_detectionstatus_flub, align = "c", caption = "Influenza B Detection Status") %>%
+  kable_styling() %>%
+  kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+
+```
+
+
+
+### H5
+
+- Here are the most recent H5 detection status for each utility.
+- Pulled from detectionstatus_summary_[date] report in output folder.
+
+```{r h5 detections}
+
+count_persistentdetection <- IDB_detectionstatus_h5 %>%
+  filter(!`Persistent detection` == "") %>%  
+  nrow()
+
+count_detection <- IDB_detectionstatus_h5 %>%
+  filter(!`Detection` == "") %>%  
+  nrow()
+
+count_norecentdetection <- IDB_detectionstatus_h5 %>%
+  filter(!`No recent detection` == "") %>%  
+  nrow()
+
+count_norecentdata <- IDB_detectionstatus_h5 %>%
+  filter(!`No recent data` == "") %>%  
+  nrow()
+
+
+
+
+detectionstatus_colnames <- c(paste0("Persistent detection (", count_persistentdetection, ")"),
+                              paste0("Detection (", count_detection, ")"),
+                              paste0("No recent detection (", count_norecentdetection, ")"),
+                              paste0("No recent data (", count_norecentdata, ")")
+                    )
+
+colnames(IDB_detectionstatus_h5) <- detectionstatus_colnames
+
+kable(IDB_detectionstatus_h5, align = "c", caption = "H5 Detection Status") %>%
+  kable_styling() %>%
+  kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+
+```
+
+
+
+
+### H3
+
+- Here are the most recent H3 detection status for each utility.
+- Pulled from detectionstatus_summary_[date] report in output folder.
+
+```{r h3 detections}
+
+count_persistentdetection <- IDB_detectionstatus_h3 %>%
+  filter(!`Persistent detection` == "") %>%  
+  nrow()
+
+count_detection <- IDB_detectionstatus_h3 %>%
+  filter(!`Detection` == "") %>%  
+  nrow()
+
+count_norecentdetection <- IDB_detectionstatus_h3 %>%
+  filter(!`No recent detection` == "") %>%  
+  nrow()
+
+count_norecentdata <- IDB_detectionstatus_h3 %>%
+  filter(!`No recent data` == "") %>%  
+  nrow()
+
+
+
+
+detectionstatus_colnames <- c(paste0("Persistent detection (", count_persistentdetection, ")"),
+                              paste0("Detection (", count_detection, ")"),
+                              paste0("No recent detection (", count_norecentdetection, ")"),
+                              paste0("No recent data (", count_norecentdata, ")")
+                    )
+
+colnames(IDB_detectionstatus_h3) <- detectionstatus_colnames
+
+kable(IDB_detectionstatus_h3, align = "c", caption = "H3 Detection Status") %>%
+  kable_styling() %>%
+  kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+
+```
+
+
+
+### H1
+
+- Here are the most recent H1 detection status for each utility.
+- Pulled from detectionstatus_summary_[date] report in output folder.
+
+```{r h1 detections}
+
+count_persistentdetection <- IDB_detectionstatus_h1 %>%
+  filter(!`Persistent detection` == "") %>%  
+  nrow()
+
+count_detection <- IDB_detectionstatus_h1 %>%
+  filter(!`Detection` == "") %>%  
+  nrow()
+
+count_norecentdetection <- IDB_detectionstatus_h1 %>%
+  filter(!`No recent detection` == "") %>%  
+  nrow()
+
+count_norecentdata <- IDB_detectionstatus_h1 %>%
+  filter(!`No recent data` == "") %>%  
+  nrow()
+
+
+
+detectionstatus_colnames <- c(paste0("Persistent detection (", count_persistentdetection, ")"),
+                              paste0("Detection (", count_detection, ")"),
+                              paste0("No recent detection (", count_norecentdetection, ")"),
+                              paste0("No recent data (", count_norecentdata, ")")
+                    )
+
+colnames(IDB_detectionstatus_h1) <- detectionstatus_colnames
+
+kable(IDB_detectionstatus_h1, align = "c", caption = "H1 Detection Status") %>%
+  kable_styling() %>%
+  kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+
+```
+
+
+<br>
+<br>
+<br>
+
+## Section Three: Recent Viral Concentrations {.tabset}
+
+The following plots populate the last 6 samples per utility within the last *21 days from max sample date for dataset* and *active participation status for pathogen* (includes internal and public utilities).
+
+### Sars-CoV-2
+```{r sars overview, fig.width=10, fig.height=30}
+
+sars_plot <- IDBoutput %>%
+  filter(pcr_target == "sars-cov-2" & lab_phase == "Lab Phase 3") %>%
+  filter(utility %in% Active_utilities_sars$wwtp_name) %>%
+  group_by(utility) %>%
+  arrange(utility, desc(measure_date)) %>%
+  filter(measure_date >= max(measure_date) -21) %>%
+  slice_head(n=6)
+
+#plot
+max_y <- sars_plot
+max_y <- max(max_y$viral_conc_raw, na.rm = TRUE)
+max_y <- abs(max_y)
+
+lod_lp3 <- sars_plot %>%
+  group_by(utility) %>%
+  complete(measure_date = seq.Date(min(measure_date), to = max(measure_date), by="day")) %>%
+  filter(measure_date >= "2024-09-30") %>%
+  mutate(lod_limit = 1200) 
+
+
+ggplotly(
+  ggplot() +
+    geom_tile(
+      data = lod_lp3,
+      aes(x = measure_date, y = lod_limit/2,
+          height = 1200,
+          text = paste(
+            "<b>Date:</b> ",
+            measure_date,
+            "<br><b>Limit of Detection:</b> ",
+            lod_limit)
+      ),
+      fill = "lightblue", color = "lightblue"
+    ) +
+    geom_point(
+      data = sars_plot,
+      aes(
+        x = measure_date,
+        y = viral_conc_raw,
+        fill = factor(detection_status),
+        text = paste(
+          "<b>Utility:</b>", utility,
+          "<br><b>Sample Date:</b> ",
+          measure_date,
+          "<br><b>Viral Concentration:</b>",
+          format(round(as.numeric(viral_conc_raw), 0), nsmall = 0, big.mark = ","),
+          "copies/L<br><b>Sample Type:</b> ", 
+          sample_type,
+          "<br><b>Detection Status:</b>",
+          detection_status)
+        )
+    ) +
+    geom_line(
+      data = sars_plot,
+      aes(x = measure_date, y = viral_conc_raw, fill = factor(utility), color = factor(utility))
+    ) +
+    geom_line(
+      data = sars_plot,
+      aes(x = measure_date, y = pcr_target_cl_95_lo), fill = "gray", color = "gray"
+    ) +
+    geom_line(
+      data = sars_plot,
+      aes(x = measure_date, y = pcr_target_cl_95_up), fill = "gray", color = "gray"
+    ) +
+    facet_wrap(~ utility, ncol=1) +  # Facet by utility
+    ylim(0, max_y*1.1) +
+    theme_gdocs() +
+    labs(y = "Raw Viral Concentration (copies/L)",
+         x = "Sample Collect Date",
+         #fill = "Utility",
+         title = "Sars-Cov-2 Recent Samples by Utility") +
+    theme(text = element_text(family = "Arial", size = 8),
+          plot.title = element_text(hjust = 0.5),
+          legend.position = "none",
+          ),
+  tooltip = "text"
+)
+
+```
+
+
+### PanRSV
+```{r rsv overview, fig.width=10, fig.height=20}
+
+rsv_plot <- IDBoutput %>%
+  filter(pcr_target == "RSV A + B Combined" & lab_phase == "Lab Phase 3") %>%
+  filter(utility %in% Active_utilities_rsv$wwtp_name) %>%
+  group_by(utility) %>%
+  arrange(utility, desc(measure_date)) %>%
+  filter(measure_date >= max(measure_date) -21) %>%
+  slice_head(n=6)
+
+#plot
+max_y <- rsv_plot
+max_y <- max(max_y$viral_conc_raw, na.rm = TRUE)
+max_y <- abs(max_y)
+
+lod_lp3 <- rsv_plot %>%
+  group_by(utility) %>%
+  complete(measure_date = seq.Date(min(measure_date), to = max(measure_date), by="day")) %>%
+  filter(measure_date >= "2024-09-30") %>%
+  mutate(lod_limit = 1200) 
+
+
+ggplotly(
+  ggplot() +
+    geom_tile(
+      data = lod_lp3, 
+      aes(x = measure_date, y = lod_limit/2,
+          height = 1200,
+          text = paste(
+            "<b>Date:</b> ",
+            measure_date,
+            "<br><b>Limit of Detection:</b> ",
+            lod_limit)
+      ),
+      fill = "lightblue", color = "lightblue"
+    ) +
+    geom_point(
+      data = rsv_plot,
+      aes(
+        x = measure_date,
+        y = viral_conc_raw,
+        fill = factor(detection_status),
+        text = paste(
+          "<b>Utility:</b>", utility,
+          "<br><b>Sample Date:</b> ",
+          measure_date,
+          "<br><b>Viral Concentration:</b>",
+          format(round(as.numeric(viral_conc_raw), 0), nsmall = 0, big.mark = ","), 
+          "copies/L<br><b>Sample Type:</b> ", 
+          sample_type,
+                    "<br><b>Detection Status:</b>",
+          detection_status)
+        )
+    ) +
+    geom_line(
+      data = rsv_plot,
+      aes(x = measure_date, y = viral_conc_raw, fill = factor(utility), color = factor(utility))
+    ) +
+    geom_line(
+      data = rsv_plot,
+      aes(x = measure_date, y = pcr_target_cl_95_lo), fill = "gray", color = "gray"
+    ) +
+    geom_line(
+      data = rsv_plot,
+      aes(x = measure_date, y = pcr_target_cl_95_up), fill = "gray", color = "gray"
+    ) +
+    facet_wrap(~ utility, ncol=1) +  # Facet by utility
+    ylim(0, max_y*1.5) +
+    theme_gdocs() +
+    labs(y = "Raw Viral Concentration (copies/L)",
+         x = "Sample Collect Date",
+         #fill = "Utility",
+         title = "RSV Recent Samples by Utility") +  
+    theme(text = element_text(family = "Arial", size = 8),
+          plot.title = element_text(hjust = 0.5),
+          legend.position = "none",
+           
+         
+          ),
+  tooltip = "text"
+)
+
+```
+
+### Influenza A
+```{r flu a overview, fig.width=10, fig.height=20}
+
+flu_plot <- IDBoutput %>%
+  filter(pcr_target %in% c("FLUAV") & lab_phase == "Lab Phase 3") %>%
+  filter(utility %in% Active_utilities_flua$wwtp_name) %>%
+  group_by(utility) %>%
+  arrange(utility, desc(measure_date)) %>%
+  filter(measure_date >= max(measure_date) -21) %>%
+  slice_head(n=6)
+
+#plot
+max_y <- flu_plot
+max_y <- max(max_y$viral_conc_raw, na.rm = TRUE)
+max_y <- abs(max_y)
+
+lod_lp3 <- flu_plot %>%
+  group_by(utility) %>%
+  complete(measure_date = seq.Date(min(measure_date), to = max(measure_date), by="day")) %>%
+  filter(measure_date >= "2024-09-30") %>%
+  mutate(lod_limit = 1200) 
+
+
+ggplotly(
+  ggplot() +
+    geom_tile(
+      data = lod_lp3, 
+      aes(x = measure_date, y = lod_limit/2,
+          height = 1200,
+          text = paste(
+            "<b>Date:</b> ",
+            measure_date,
+            "<br><b>Limit of Detection:</b> ",
+            lod_limit)
+      ),
+      fill = "lightblue", color = "lightblue"
+    ) +
+    geom_point(
+      data = flu_plot,
+      aes(
+        x = measure_date,
+        y = viral_conc_raw,
+        fill = factor(detection_status),
+        text = paste(
+          "<b>Utility:</b>", utility,
+          "<br><b>Sample Date:</b> ",
+          measure_date,
+          "<br><b>Viral Concentration:</b>",
+          format(round(as.numeric(viral_conc_raw), 0), nsmall = 0, big.mark = ","), 
+          "copies/L<br><b>Sample Type:</b> ", 
+          sample_type,
+          "<br><b>Detection Status:</b>",
+          detection_status)
+        )
+    ) +
+    geom_line(
+      data = flu_plot,
+      aes(x = measure_date, y = viral_conc_raw, fill = factor(utility), color = factor(utility))
+    ) +
+    geom_line(
+      data = flu_plot,
+      aes(x = measure_date, y = pcr_target_cl_95_lo), fill = "gray", color = "gray"
+    ) +
+    geom_line(
+      data = flu_plot,
+      aes(x = measure_date, y = pcr_target_cl_95_up), fill = "gray", color = "gray"
+    ) +
+    facet_wrap(~ utility, ncol=1) +  # Facet by utility
+    ylim(0, max_y*1.5) +
+    theme_gdocs() +
+    labs(y = "Raw Viral Concentration (copies/L)",
+         x = "Sample Collect Date",
+         title = "Influenza A Recent Samples by Utility") +  
+    theme(text = element_text(family = "Arial", size = 8),
+          plot.title = element_text(hjust = 0.5),
+          legend.position = "none",
+           
+         
+          ),
+  tooltip = "text"
+)
+
+```
+
+### Influenza B
+
+```{r flu b overview, fig.width=10, fig.height=20}
+
+flu_plot <- IDBoutput %>%
+  filter(pcr_target %in% c("FLUBV") & lab_phase == "Lab Phase 3") %>%
+  filter(utility %in% Active_utilities_flub$wwtp_name) %>%
+  group_by(utility) %>%
+  arrange(utility, desc(measure_date)) %>%
+  filter(measure_date >= max(measure_date) -21) %>%
+  slice_head(n=6)
+
+#plot
+max_y <- flu_plot
+max_y <- max(max_y$viral_conc_raw, na.rm = TRUE)
+max_y <- abs(max_y)
+
+lod_lp3 <- flu_plot %>%
+  group_by(utility) %>%
+  complete(measure_date = seq.Date(min(measure_date), to = max(measure_date), by="day")) %>%
+  filter(measure_date >= "2024-09-30") %>%
+  mutate(lod_limit = 1200) 
+
+
+ggplotly(
+  ggplot() +
+    geom_tile(
+      data = lod_lp3, 
+      aes(x = measure_date, y = lod_limit/2,
+          height = 1200,
+          text = paste(
+            "<b>Date:</b> ",
+            measure_date,
+            "<br><b>Limit of Detection:</b> ",
+            lod_limit)
+      ),
+      fill = "lightblue", color = "lightblue"
+    ) +
+    geom_point(
+      data = flu_plot,
+      aes(
+        x = measure_date,
+        y = viral_conc_raw,
+        fill = factor(detection_status),
+        text = paste(
+          "<b>Utility:</b>", utility,
+          "<br><b>Sample Date:</b> ",
+          measure_date,
+          "<br><b>Viral Concentration:</b>",
+          format(round(as.numeric(viral_conc_raw), 0), nsmall = 0, big.mark = ","), 
+          "copies/L<br><b>Sample Type:</b> ", 
+          sample_type,
+          "<br><b>Detection Status:</b>",
+          detection_status)
+        )
+    ) +
+    geom_line(
+      data = flu_plot,
+      aes(x = measure_date, y = viral_conc_raw, fill = factor(utility), color = factor(utility))
+    ) +
+    geom_line(
+      data = flu_plot,
+      aes(x = measure_date, y = pcr_target_cl_95_lo), fill = "gray", color = "gray"
+    ) +
+    geom_line(
+      data = flu_plot,
+      aes(x = measure_date, y = pcr_target_cl_95_up), fill = "gray", color = "gray"
+    ) +
+    facet_wrap(~ utility, ncol=1) +  # Facet by utility
+    ylim(0, max_y*1.5) +
+    theme_gdocs() +
+    labs(y = "Raw Viral Concentration (copies/L)",
+         x = "Sample Collect Date",
+         #fill = "Utility",
+         title = "Influenza B Recent Samples by Utility") +  
+    theme(text = element_text(family = "Arial", size = 8),
+          plot.title = element_text(hjust = 0.5),
+          legend.position = "none",
+           
+         
+          ),
+  tooltip = "text"
+)
+```
+
+
+### H5
+
+```{r H5 overview, fig.width=10, fig.height=20}
+
+H5_plot <- IDBoutput %>%
+  filter(pcr_target %in% c("H5") & lab_phase == "Lab Phase 3") %>%
+  filter(utility %in% Active_utilities_flua$wwtp_name) %>%
+  group_by(utility) %>%
+  arrange(utility, desc(measure_date)) %>%
+  filter(measure_date >= max(measure_date) -21) %>%
+  slice_head(n=6)
+
+#plot
+max_y <- H5_plot
+max_y <- max(max_y$viral_conc_raw, na.rm = TRUE)
+max_y <- abs(max_y)
+
+lod_lp3 <- H5_plot %>%
+  group_by(utility) %>%
+  complete(measure_date = seq.Date(min(measure_date), to = max(measure_date), by="day")) %>%
+  filter(measure_date >= "2024-09-30") %>%
+  mutate(lod_limit = 1200) 
+
+
+
+ggplotly(
+  ggplot() +
+    geom_tile(
+      data = lod_lp3, 
+      aes(x = measure_date, y = lod_limit/2,
+          height = 1200,
+          text = paste(
+            "<b>Date:</b> ",
+            measure_date,
+            "<br><b>Limit of Detection:</b> ",
+            lod_limit)
+      ),
+      fill = "lightblue", color = "lightblue"
+    ) +
+    geom_point(
+      data = H5_plot,
+      aes(
+        x = measure_date,
+        y = viral_conc_raw,
+        fill = factor(detection_status),
+        text = paste(
+          "<b>Utility:</b>", utility,
+          "<br><b>Sample Date:</b> ",
+          measure_date,
+          "<br><b>Viral Concentration:</b>",
+          format(round(as.numeric(viral_conc_raw), 0), nsmall = 0, big.mark = ","), 
+          "copies/L<br><b>Sample Type:</b> ", 
+          sample_type,
+          "<br><b>Detection Status:</b>",
+          detection_status)
+        )
+    ) +
+    geom_line(
+      data = H5_plot,
+      aes(x = measure_date, y = viral_conc_raw, fill = factor(utility), color = factor(utility))
+    ) +
+    geom_line(
+      data = H5_plot,
+      aes(x = measure_date, y = pcr_target_cl_95_lo), fill = "gray", color = "gray"
+    ) +
+    geom_line(
+      data = H5_plot,
+      aes(x = measure_date, y = pcr_target_cl_95_up), fill = "gray", color = "gray"
+    ) +
+    facet_wrap(~ utility, ncol=1) +  # Facet by utility
+    ylim(0, max_y*1.5) +
+    theme_gdocs() +
+    labs(y = "Raw Viral Concentration (copies/L)",
+         x = "Sample Collect Date",
+         #fill = "Utility",
+         title = "H5 Recent Samples by Utility") +  
+    theme(text = element_text(family = "Arial", size = 8),
+          plot.title = element_text(hjust = 0.5),
+          legend.position = "none",
+           
+         
+          ),
+  tooltip = "text"
+)
+
+```
+
+
+### H3
+
+```{r H3 overview, fig.width=10, fig.height=20}
+
+H3_plot <- IDBoutput %>%
+  filter(pcr_target %in% c("H3") & lab_phase == "Lab Phase 3") %>%
+  filter(utility %in% Active_utilities_flua$wwtp_name) %>%
+  group_by(utility) %>%
+  arrange(utility, desc(measure_date)) %>%
+  filter(measure_date >= max(measure_date) -21) %>%
+  slice_head(n=6)
+
+#plot
+max_y <- H3_plot
+max_y <- max(max_y$viral_conc_raw, na.rm = TRUE)
+max_y <- abs(max_y)
+
+lod_lp3 <- H3_plot %>%
+  group_by(utility) %>%
+  complete(measure_date = seq.Date(min(measure_date), to = max(measure_date), by="day")) %>%
+  filter(measure_date >= "2024-09-30") %>%
+  mutate(lod_limit = 1200) 
+
+ggplotly(
+  ggplot() +
+    geom_tile(
+      data = lod_lp3, 
+      aes(x = measure_date, y = lod_limit/2,
+          height = 1200,
+          text = paste(
+            "<b>Date:</b> ",
+            measure_date,
+            "<br><b>Limit of Detection:</b> ",
+            lod_limit)
+      ),
+      fill = "lightblue", color = "lightblue"
+    ) +
+    geom_point(
+      data = H3_plot,
+      aes(
+        x = measure_date,
+        y = viral_conc_raw,
+        fill = factor(detection_status),
+        text = paste(
+          "<b>Utility:</b>", utility,
+          "<br><b>Sample Date:</b> ",
+          measure_date,
+          "<br><b>Viral Concentration:</b>",
+          format(round(as.numeric(viral_conc_raw), 0), nsmall = 0, big.mark = ","), 
+          "copies/L<br><b>Sample Type:</b> ", 
+          sample_type,
+          "<br><b>Detection Status:</b>",
+          detection_status)
+        )
+    ) +
+    geom_line(
+      data = H3_plot,
+      aes(x = measure_date, y = viral_conc_raw, fill = factor(utility), color = factor(utility))
+    ) +
+    geom_line(
+      data = H3_plot,
+      aes(x = measure_date, y = pcr_target_cl_95_lo), fill = "gray", color = "gray"
+    ) +
+    geom_line(
+      data = H3_plot,
+      aes(x = measure_date, y = pcr_target_cl_95_up), fill = "gray", color = "gray"
+    ) +
+    facet_wrap(~ utility, ncol=1) +  # Facet by utility
+    ylim(0, max_y*1.5) +
+    theme_gdocs() +
+    labs(y = "Raw Viral Concentration (copies/L)",
+         x = "Sample Collect Date",
+         #fill = "Utility",
+         title = "H3 Recent Samples by Utility") +  
+    theme(text = element_text(family = "Arial", size = 8),
+          plot.title = element_text(hjust = 0.5),
+          legend.position = "none",
+           
+         
+          ),
+  tooltip = "text"
+)
+
+```
+
+
+### H1
+
+```{r H1 overview, fig.width=10, fig.height=20}
+
+H1_plot <- IDBoutput %>%
+  filter(pcr_target %in% c("H1") & lab_phase == "Lab Phase 3") %>%
+  filter(utility %in% Active_utilities_flua$wwtp_name) %>%
+  group_by(utility) %>%
+  arrange(utility, desc(measure_date)) %>%
+  filter(measure_date >= max(measure_date) -21) %>%
+  slice_head(n=6)
+
+#plot
+max_y <- H1_plot
+max_y <- max(max_y$viral_conc_raw, na.rm = TRUE)
+max_y <- abs(max_y)
+
+lod_lp3 <- H1_plot %>%
+  group_by(utility) %>%
+  complete(measure_date = seq.Date(min(measure_date), to = max(measure_date), by="day")) %>%
+  filter(measure_date >= "2024-09-30") %>%
+  mutate(lod_limit = 1200)
+
+ggplotly(
+  ggplot() +
+    geom_tile(
+      data = lod_lp3, 
+      aes(x = measure_date, y = lod_limit/2,
+          height = 1200,
+          text = paste(
+            "<b>Date:</b> ",
+            measure_date,
+            "<br><b>Limit of Detection:</b> ",
+            lod_limit)
+      ),
+      fill = "lightblue", color = "lightblue"
+    ) +
+    geom_point(
+      data = H1_plot,
+      aes(
+        x = measure_date,
+        y = viral_conc_raw,
+        fill = factor(detection_status),
+        text = paste(
+          "<b>Utility:</b>", utility,
+          "<br><b>Sample Date:</b> ",
+          measure_date,
+          "<br><b>Viral Concentration:</b>",
+          format(round(as.numeric(viral_conc_raw), 0), nsmall = 0, big.mark = ","), 
+          "copies/L<br><b>Sample Type:</b> ", 
+          sample_type,
+          "<br><b>Detection Status:</b>",
+          detection_status)
+        )
+    ) +
+    geom_line(
+      data = H1_plot,
+      aes(x = measure_date, y = viral_conc_raw, fill = factor(utility), color = factor(utility))
+    ) +
+    geom_line(
+      data = H1_plot,
+      aes(x = measure_date, y = pcr_target_cl_95_lo), fill = "gray", color = "gray"
+    ) +
+    geom_line(
+      data = H1_plot,
+      aes(x = measure_date, y = pcr_target_cl_95_up), fill = "gray", color = "gray"
+    ) +
+    facet_wrap(~ utility, ncol=1) +  # Facet by utility
+    ylim(0, max_y*1.5) +
+    theme_gdocs() +
+    labs(y = "Raw Viral Concentration (copies/L)",
+         x = "Sample Collect Date",
+         #fill = "Utility",
+         title = "H1 Recent Samples by Utility") +  
+    theme(text = element_text(family = "Arial", size = 8),
+          plot.title = element_text(hjust = 0.5),
+          legend.position = "none",
+           
+         
+          ),
+  tooltip = "text"
+)
+
+```
+
+
+
+<br>
+<br>
+<br>
+
+
+## Section Four A: Public Dashboard Trends {.tabset}
+- Data pulled from PDB_trends file in K drive Public Dashboard folder
+- This file is identical to the one that updates the Public Dashboard
+
+### Sars-CoV-2 Trends
+
+```{r PDB trends sars}
+
+# Define all possible trend categories
+all_trends <- c("Steady Increase", "Increase", "Plateau", "Decrease", "Steady Decrease")
+
+pdb_trends_table <- pdb_trends %>%
+  filter(pcr_target == "sars-cov-2") %>%
+  group_by(utility) %>%
+  arrange(desc(measure_date)) %>%
+  slice_head(n = 1) %>%
+  ungroup() %>%
+  mutate(utility_label = paste0(utility, " (", measure_date, ")")) %>%
+  select(trend, utility_label) %>%
+  mutate(
+    trend = factor(trend, levels = all_trends),  # Ensures consistent column order
+    value = utility_label
+  ) %>%
+  complete(trend) %>%  # Fills in missing trend rows with NA
+  pivot_wider(
+    names_from = trend,
+    values_from = value,
+    values_fn = list
+  ) %>%
+  unnest(cols = everything()) %>%
+  select(-utility_label) 
+
+# Function to remove NA and shift column up
+shift_column_up <- function(column) {
+  non_na_values <- column[!is.na(column)]
+  length_diff <- length(column) - length(non_na_values)
+  c(non_na_values, rep(NA, length_diff))
+}
+
+# Loop through each column and apply the function
+for (col in names(pdb_trends_table)) {
+  pdb_trends_table[[col]] <- shift_column_up(pdb_trends_table[[col]])
+}
+
+pdb_trends_table <- pdb_trends_table %>%
+  filter(!if_all(everything(), is.na)) %>%   # Remove rows where all columns are NA
+  mutate(across(everything(), ~replace_na(., "")))  # Replace remaining NAs with ""
+
+
+count_SInc <- pdb_trends_table %>%
+  filter(!`Steady Increase` == "") %>%  
+  nrow()
+
+count_Inc <- pdb_trends_table %>%
+  filter(!`Increase` == "") %>%  
+  nrow()
+
+count_Plat <- pdb_trends_table %>%
+  filter(!`Plateau` == "") %>%  
+  nrow()
+
+count_Decr <- pdb_trends_table %>%
+  filter(!`Decrease` == "") %>%  
+  nrow()
+
+count_SDecr <- pdb_trends_table %>%
+  filter(!`Steady Decrease` == "") %>%  
+  nrow()
+
+
+trend_colnames <- c(paste0("Steady Increase (", count_SInc, ")"),
+                    paste0("Increase (", count_Inc, ")"),
+                    paste0("Plateau (", count_Plat, ")"),
+                    paste0("Decrease (", count_Decr, ")"),
+                    paste0("Steady Decrease (", count_SDecr, ")")
+                    )
+
+colnames(pdb_trends_table) <- trend_colnames
+
+
+kable(pdb_trends_table, align = "c", caption = "Sars-Cov-2 Trends") %>%
+  kable_styling() %>%
+  kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+```
+
+
+
+### Influenza A & B Combined Trends
+
+```{r PDB trends flua flub}
+# Define all possible trend categories
+all_trends <- c("Persistent detection", "Detection", "No recent detection", "No recent sample")
+
+pdb_trends_table <- pdb_trends %>%
+  filter(pcr_target %in% c("FLUAV", "FLUBV")) %>%
+  mutate(trend = factor(trend, levels = all_trends)) %>%
+  group_by(utility) %>%
+  arrange(desc(measure_date), trend) %>%
+  slice_head(n = 1) %>%
+  ungroup() %>%
+  mutate(utility_label = paste0(utility, " (", measure_date, ")")) %>%
+  select(trend, utility_label) %>%
+  mutate(
+    trend = factor(trend, levels = all_trends),  # Ensures consistent column order
+    value = utility_label
+  ) %>%
+  complete(trend) %>%  # Fills in missing trend rows with NA
+  pivot_wider(
+    names_from = trend,
+    values_from = value,
+    values_fn = list
+  ) %>%
+  unnest(cols = everything()) %>%
+  select(-utility_label)
+
+
+# Function to remove NA and shift column up
+shift_column_up <- function(column) {
+  non_na_values <- column[!is.na(column)]
+  length_diff <- length(column) - length(non_na_values)
+  c(non_na_values, rep(NA, length_diff))
+}
+
+# Loop through each column and apply the function
+for (col in names(pdb_trends_table)) {
+  pdb_trends_table[[col]] <- shift_column_up(pdb_trends_table[[col]])
+}
+
+pdb_trends_table <- pdb_trends_table %>%
+  filter(!if_all(everything(), is.na)) %>%   # Remove rows where all columns are NA
+  mutate(across(everything(), ~replace_na(., "")))  # Replace remaining NAs with ""
+
+
+count_persistentdetection <- pdb_trends_table %>%
+  filter(!`Persistent detection` == "") %>%  
+  nrow()
+
+count_detection <- pdb_trends_table %>%
+  filter(!`Detection` == "") %>%  
+  nrow()
+
+count_norecentdetection <- pdb_trends_table %>%
+  filter(!`No recent detection` == "") %>%  
+  nrow()
+
+count_norecentdata <- pdb_trends_table %>%
+  filter(!`No recent sample` == "") %>%  
+  nrow()
+
+
+detectionstatus_colnames <- c(paste0("Persistent detection (", count_persistentdetection, ")"),
+                              paste0("Detection (", count_detection, ")"),
+                              paste0("No recent detection (", count_norecentdetection, ")"),
+                              paste0("No recent sample (", count_norecentdata, ")")
+                              )
+
+colnames(pdb_trends_table) <- detectionstatus_colnames
+
+kable(pdb_trends_table, align = "c", caption = "Influenza A+B Combined Trends") %>%
+  kable_styling() %>%
+  kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+```
+
+
+
+### Influenza A Trends
+
+```{r PDB trends flua}
+# Define all possible trend categories
+all_trends <- c("Persistent detection", "Detection", "No recent detection", "No recent sample")
+
+pdb_trends_table <- pdb_trends %>%
+  filter(pcr_target == "FLUAV") %>%
+  group_by(utility) %>%
+  arrange(desc(measure_date)) %>%
+  slice_head(n = 1) %>%
+  ungroup() %>%
+  mutate(utility_label = paste0(utility, " (", measure_date, ")")) %>%
+  select(trend, utility_label) %>%
+  mutate(
+    trend = factor(trend, levels = all_trends),  # Ensures consistent column order
+    value = utility_label
+  ) %>%
+  complete(trend) %>%  # Fills in missing trend rows with NA
+  pivot_wider(
+    names_from = trend,
+    values_from = value,
+    values_fn = list
+  ) %>%
+  unnest(cols = everything()) %>%
+  select(-utility_label)
+
+
+# Function to remove NA and shift column up
+shift_column_up <- function(column) {
+  non_na_values <- column[!is.na(column)]
+  length_diff <- length(column) - length(non_na_values)
+  c(non_na_values, rep(NA, length_diff))
+}
+
+# Loop through each column and apply the function
+for (col in names(pdb_trends_table)) {
+  pdb_trends_table[[col]] <- shift_column_up(pdb_trends_table[[col]])
+}
+
+pdb_trends_table <- pdb_trends_table %>%
+  filter(!if_all(everything(), is.na)) %>%   # Remove rows where all columns are NA
+  mutate(across(everything(), ~replace_na(., "")))  # Replace remaining NAs with ""
+
+count_persistentdetection <- pdb_trends_table %>%
+  filter(!`Persistent detection` == "") %>%  
+  nrow()
+
+count_detection <- pdb_trends_table %>%
+  filter(!`Detection` == "") %>%  
+  nrow()
+
+count_norecentdetection <- pdb_trends_table %>%
+  filter(!`No recent detection` == "") %>%  
+  nrow()
+
+count_norecentdata <- pdb_trends_table %>%
+  filter(!`No recent sample` == "") %>%  
+  nrow()
+
+
+detectionstatus_colnames <- c(paste0("Persistent detection (", count_persistentdetection, ")"),
+                              paste0("Detection (", count_detection, ")"),
+                              paste0("No recent detection (", count_norecentdetection, ")"),
+                              paste0("No recent sample (", count_norecentdata, ")")
+                              )
+
+colnames(pdb_trends_table) <- detectionstatus_colnames
+
+kable(pdb_trends_table, align = "c", caption = "Influenza A Trends") %>%
+  kable_styling() %>%
+  kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+```
+
+
+
+### Influenza B Trends
+
+```{r PDB trends flub}
+# Define all possible trend categories
+all_trends <- c("Persistent detection", "Detection", "No recent detection", "No recent sample")
+
+pdb_trends_table <- pdb_trends %>%
+  filter(pcr_target == "FLUBV") %>%
+  group_by(utility) %>%
+  arrange(desc(measure_date)) %>%
+  slice_head(n = 1) %>%
+  ungroup() %>%
+  mutate(utility_label = paste0(utility, " (", measure_date, ")")) %>%
+  select(trend, utility_label) %>%
+  mutate(
+    trend = factor(trend, levels = all_trends),  # Ensures consistent column order
+    value = utility_label
+  ) %>%
+  complete(trend) %>%  # Fills in missing trend rows with NA
+  pivot_wider(
+    names_from = trend,
+    values_from = value,
+    values_fn = list
+  ) %>%
+  unnest(cols = everything()) %>%
+  select(-utility_label)
+
+
+# Function to remove NA and shift column up
+shift_column_up <- function(column) {
+  non_na_values <- column[!is.na(column)]
+  length_diff <- length(column) - length(non_na_values)
+  c(non_na_values, rep(NA, length_diff))
+}
+
+# Loop through each column and apply the function
+for (col in names(pdb_trends_table)) {
+  pdb_trends_table[[col]] <- shift_column_up(pdb_trends_table[[col]])
+}
+
+pdb_trends_table <- pdb_trends_table %>%
+  filter(!if_all(everything(), is.na)) %>%   # Remove rows where all columns are NA
+  mutate(across(everything(), ~replace_na(., "")))  # Replace remaining NAs with ""
+
+count_persistentdetection <- pdb_trends_table %>%
+  filter(!`Persistent detection` == "") %>%  
+  nrow()
+
+count_detection <- pdb_trends_table %>%
+  filter(!`Detection` == "") %>%  
+  nrow()
+
+count_norecentdetection <- pdb_trends_table %>%
+  filter(!`No recent detection` == "") %>%  
+  nrow()
+
+count_norecentdata <- pdb_trends_table %>%
+  filter(!`No recent sample` == "") %>%  
+  nrow()
+
+
+detectionstatus_colnames <- c(paste0("Persistent detection (", count_persistentdetection, ")"),
+                              paste0("Detection (", count_detection, ")"),
+                              paste0("No recent detection (", count_norecentdetection, ")"),
+                              paste0("No recent sample (", count_norecentdata, ")")
+                              )
+
+colnames(pdb_trends_table) <- detectionstatus_colnames
+
+kable(pdb_trends_table, align = "c", caption = "Influenza B Trends") %>%
+  kable_styling() %>%
+  kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+```
+
+
+### PanRSV Trends
+
+```{r PDB trends rsv}
+# Define all possible trend categories
+all_trends <- c("Persistent detection", "Detection", "No recent detection", "No recent sample")
+
+pdb_trends_table <- pdb_trends %>%
+  filter(pcr_target == "PanRSV") %>%
+  group_by(utility) %>%
+  arrange(desc(measure_date)) %>%
+  slice_head(n = 1) %>%
+  ungroup() %>%
+  mutate(utility_label = paste0(utility, " (", measure_date, ")")) %>%
+  select(trend, utility_label) %>%
+  mutate(
+    trend = factor(trend, levels = all_trends),  # Ensures consistent column order
+    value = utility_label
+  ) %>%
+  complete(trend) %>%  # Fills in missing trend rows with NA
+  pivot_wider(
+    names_from = trend,
+    values_from = value,
+    values_fn = list
+  ) %>%
+  unnest(cols = everything()) %>%
+  select(-utility_label)
+
+
+# Function to remove NA and shift column up
+shift_column_up <- function(column) {
+  non_na_values <- column[!is.na(column)]
+  length_diff <- length(column) - length(non_na_values)
+  c(non_na_values, rep(NA, length_diff))
+}
+
+# Loop through each column and apply the function
+for (col in names(pdb_trends_table)) {
+  pdb_trends_table[[col]] <- shift_column_up(pdb_trends_table[[col]])
+}
+
+pdb_trends_table <- pdb_trends_table %>%
+  filter(!if_all(everything(), is.na)) %>%   # Remove rows where all columns are NA
+  mutate(across(everything(), ~replace_na(., "")))  # Replace remaining NAs with ""
+
+count_persistentdetection <- pdb_trends_table %>%
+  filter(!`Persistent detection` == "") %>%  
+  nrow()
+
+count_detection <- pdb_trends_table %>%
+  filter(!`Detection` == "") %>%  
+  nrow()
+
+count_norecentdetection <- pdb_trends_table %>%
+  filter(!`No recent detection` == "") %>%  
+  nrow()
+
+count_norecentdata <- pdb_trends_table %>%
+  filter(!`No recent sample` == "") %>%  
+  nrow()
+
+
+detectionstatus_colnames <- c(paste0("Persistent detection (", count_persistentdetection, ")"),
+                              paste0("Detection (", count_detection, ")"),
+                              paste0("No recent detection (", count_norecentdetection, ")"),
+                              paste0("No recent sample (", count_norecentdata, ")")
+                              )
+
+colnames(pdb_trends_table) <- detectionstatus_colnames
+
+kable(pdb_trends_table, align = "c", caption = "RSV Trends") %>%
+  kable_styling() %>%
+  kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+```
+
+
+
+## Section Four B: Public Data Pre-Check {.tabset}
+- Data pulled from Public_Dashboard_Data_[date] file
+- Filtered for data within last 14 days since Sys.Date
+- **Mpox viral concentration** okay to populate (needed for detection status data); verify it is not included in Open Portal data in next section.
+- **Measles and WNV should NOT be included on PFD or Open Portal.**
+
+### Sars-Cov-2
+```{r PDB sars}
+pdb_verification_sars <- pdb_verification %>%
+  arrange(desc(measure_date)) %>%
+  select(utility, pcr_target, measure_date, viral_conc_raw, sample_id) %>%
+  filter(!viral_conc_raw == 0) %>%
+  filter(measure_date >= (Sys.Date()-14)) %>%
+  filter(pcr_target == "sars-cov-2")
+
+
+kable(pdb_verification_sars, align = "c") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+```
+
+
+### PanRSV
+```{r PDB rsv}
+pdb_verification_rsv <- pdb_verification %>%
+  arrange(desc(measure_date)) %>%
+  select(utility, pcr_target, measure_date, viral_conc_raw, sample_id) %>%
+  filter(!viral_conc_raw == 0) %>%
+  filter(measure_date >= (Sys.Date()-14)) %>%
+  filter(pcr_target == "PanRSV")
+
+
+kable(pdb_verification_rsv, align = "c") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+```
+
+### Influenza A
+```{r PDB flu a}
+pdb_verification_flua <- pdb_verification %>%
+  arrange(desc(measure_date)) %>%
+  select(utility, pcr_target, measure_date, viral_conc_raw, sample_id) %>%
+  filter(!viral_conc_raw == 0) %>%
+  filter(measure_date >= (Sys.Date()-14)) %>%
+  filter(pcr_target == "FLUAV")
+
+
+kable(pdb_verification_flua, align = "c") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+```
+
+### Influenza B
+```{r PDB flu b}
+pdb_verification_flub <- pdb_verification %>%
+  arrange(desc(measure_date)) %>%
+  select(utility, pcr_target, measure_date, viral_conc_raw, sample_id) %>%
+  filter(!viral_conc_raw == 0) %>%
+  filter(measure_date >= (Sys.Date()-14)) %>%
+  filter(pcr_target == "FLUBV")
+
+
+kable(pdb_verification_flub, align = "c") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+```
+
+### H5
+```{r PDB h5}
+pdb_verification_h5 <- pdb_verification %>%
+  arrange(desc(measure_date)) %>%
+  select(utility, pcr_target, measure_date, viral_conc_raw, sample_id) %>%
+  filter(!viral_conc_raw == 0) %>%
+  filter(measure_date >= (Sys.Date()-14)) %>%
+  filter(pcr_target == "H5")
+
+
+kable(pdb_verification_h5, align = "c") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+```
+
+### H3
+```{r PDB h3}
+pdb_verification_h3 <- pdb_verification %>%
+  arrange(desc(measure_date)) %>%
+  select(utility, pcr_target, measure_date, viral_conc_raw, sample_id) %>%
+  filter(!viral_conc_raw == 0) %>%
+  filter(measure_date >= (Sys.Date()-14)) %>%
+  filter(pcr_target == "H3")
+
+
+kable(pdb_verification_h3, align = "c") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+```
+
+
+### H1
+```{r PDB h1}
+pdb_verification_h1 <- pdb_verification %>%
+  arrange(desc(measure_date)) %>%
+  select(utility, pcr_target, measure_date, viral_conc_raw, sample_id) %>%
+  filter(!viral_conc_raw == 0) %>%
+  filter(measure_date >= (Sys.Date()-14)) %>%
+  filter(pcr_target == "H1")
+
+
+kable(pdb_verification_h1, align = "c") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+```
+
+
+## Section Four C: Public Data Comparison to Open Portal {.tabset}
+- Please verify data recent data is included in the outputs that are read into the PFD mastercontrol code.
+
+- Public Dashboard file: **Public_Dashboard_Data_[date]**.
+- Open Portal file: **OpenPortal_Data_[date]**.
+- Data filtered for ***last 14 days prior to Sys.Date with 0's/NA's removed***.
+- Data arranged with ***recent data at top*** (not grouped by utility).
+
+### Public Dashboard
+```{r PDB verification}
+pdb_verification <- pdb_verification %>%
+  arrange(desc(measure_date)) %>%
+  select(utility, pcr_target, measure_date, viral_conc_raw, sample_id) %>%
+  filter(!viral_conc_raw == 0) %>%
+  filter(measure_date >= (Sys.Date()-14))
+
+
+kable(pdb_verification, align = "c") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+```
+
+### Open Portal Data
+```{r open portal verification}
+ODP_table <- open_portal_verification %>%
+  arrange(desc(measure_date)) %>%
+  filter(measure_date >= (Sys.Date()-14))
+
+
+kable(ODP_table, align = "c") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+
+```
+
+<br>
+<br>
+<br>
+
+
+## Section Five: Recent Flu A Subtyping Samples {.tabset}
+
+Here are the latest subtyping results for Influenza A. Data is filtered to the last *14 days from max sample date in dataset*.
+
+
+### **H5**
+
+```{r subtyping H5}
+input <- IDB_FluA_ST %>%
+  select(wwtp_name)
+
+result_options <- factor(c("Detected", "Sample Processing", "Not Detected", "No Sample"))
+
+
+flua_subtyping_detection <- IDB_FluA_ST %>%
+      select(wwtp_name, sample_id, sample_collect_date, 
+             h1_detected, h3_detected, h5_detected) %>%
+      pivot_longer(cols = c(h5_detected, h3_detected, h1_detected), 
+                   names_to = "pcr_target", 
+                   values_to = "detection_status") %>%
+      mutate(pcr_target = case_when(pcr_target == "h5_detected" ~ "H5",
+                                    TRUE ~ pcr_target)) %>%
+      filter(pcr_target == "H5") %>%
+      filter(sample_collect_date >= max(sample_collect_date)-14) # to remove data from prior months
+    
+    
+    flua_subtyping_conc_data <- IDB_FluA_ST %>%
+      select(wwtp_name, sample_id, sample_collect_date, 
+             h1_pcr_target_avg_conc, h3_pcr_target_avg_conc, h5_pcr_target_avg_conc) %>%
+      pivot_longer(cols = c(h5_pcr_target_avg_conc, h3_pcr_target_avg_conc, h1_pcr_target_avg_conc), 
+                   names_to = "pcr_target", 
+                   values_to = "pcr_target_avg_conc") %>%
+      mutate(pcr_target = case_when(pcr_target == "h5_pcr_target_avg_conc" ~ "H5",
+                                    TRUE ~ pcr_target)) %>%
+      filter(pcr_target == "H5") 
+    
+    viralconc_flua_subtyping_H5 <-  flua_subtyping_conc_data %>%
+      left_join(flua_subtyping_detection, by = c("wwtp_name", "sample_id", "sample_collect_date", "pcr_target")) %>%
+      mutate(sample_id = case_when(sample_id == "" ~ NA, TRUE ~ sample_id)) %>%
+      rename(output_viral_conc = pcr_target_avg_conc) %>%
+      filter(wwtp_name %in% input$wwtp_name) %>%
+      select(sample_id, wwtp_name, sample_collect_date, 
+             output_viral_conc, detection_status#, pcr_target_below_lod
+      ) %>% 
+      filter(!is.na(detection_status)) %>%
+      group_by(wwtp_name) %>%
+      filter(sample_collect_date >= max(sample_collect_date)-14) %>%
+      mutate(detection_status = factor(detection_status, levels = result_options)) %>%  # Set custom order
+      arrange(detection_status, output_viral_conc)  %>% # Arrange in the desired order 
+      rename(h5_viral_conc = output_viral_conc) %>%
+      filter(!is.na(sample_id))
+    
+kable(viralconc_flua_subtyping_H5, align = "c", caption = "H5 Subtyping") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+    
+
+```
+
+
+
+### **H3**
+
+```{r subtyping H3}
+input <- IDB_FluA_ST %>%
+  select(wwtp_name)
+
+result_options <- factor(c("Detected", "Sample Processing", "Not Detected", "No Sample"))
+
+
+flua_subtyping_detection <- IDB_FluA_ST %>%
+      select(wwtp_name, sample_id, sample_collect_date, 
+             h1_detected, h3_detected, h5_detected) %>%
+      pivot_longer(cols = c(h5_detected, h3_detected, h1_detected), 
+                   names_to = "pcr_target", 
+                   values_to = "detection_status") %>%
+      mutate(pcr_target = case_when(pcr_target == "h3_detected" ~ "H3",
+                                    TRUE ~ pcr_target)) %>%
+      filter(pcr_target == "H3") %>%
+      filter(sample_collect_date >= max(sample_collect_date)-14) # to remove data from prior months
+    
+    
+    flua_subtyping_conc_data <- IDB_FluA_ST %>%
+      select(wwtp_name, sample_id, sample_collect_date, 
+             h1_pcr_target_avg_conc, h3_pcr_target_avg_conc, h5_pcr_target_avg_conc) %>%
+      pivot_longer(cols = c(h5_pcr_target_avg_conc, h3_pcr_target_avg_conc, h1_pcr_target_avg_conc), 
+                   names_to = "pcr_target", 
+                   values_to = "pcr_target_avg_conc") %>%
+      mutate(pcr_target = case_when(pcr_target == "h3_pcr_target_avg_conc" ~ "H3",
+                                    TRUE ~ pcr_target)) %>%
+      filter(pcr_target == "H3") 
+    
+    viralconc_flua_subtyping_H3 <-  flua_subtyping_conc_data %>%
+      left_join(flua_subtyping_detection, by = c("wwtp_name", "sample_id", "sample_collect_date", "pcr_target")) %>%
+      mutate(sample_id = case_when(sample_id == "" ~ NA, TRUE ~ sample_id)) %>%
+      rename(output_viral_conc = pcr_target_avg_conc) %>%
+      filter(wwtp_name %in% input$wwtp_name) %>%
+      select(sample_id, wwtp_name, sample_collect_date, 
+             output_viral_conc, detection_status#, pcr_target_below_lod
+      ) %>% 
+      filter(!is.na(detection_status)) %>%
+      group_by(wwtp_name) %>%
+      filter(sample_collect_date >= max(sample_collect_date) - 14) %>%
+      mutate(detection_status = factor(detection_status, levels = result_options)) %>%  # Set custom order
+      arrange(detection_status, output_viral_conc)  %>% # Arrange in the desired order 
+      rename(h3_viral_conc = output_viral_conc) %>%
+      filter(!is.na(sample_id))
+
+    
+kable(viralconc_flua_subtyping_H3, align = "c", caption = "H3 Subtyping") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+    
+  
+```
+
+### **H1**
+
+```{r subtyping H1}
+input <- IDB_FluA_ST %>%
+  select(wwtp_name)
+
+result_options <- factor(c("Detected", "Sample Processing", "Not Detected", "No Sample"))
+
+
+flua_subtyping_detection <- IDB_FluA_ST %>%
+      select(wwtp_name, sample_id, sample_collect_date, 
+             h1_detected, h3_detected, h5_detected) %>%
+      pivot_longer(cols = c(h5_detected, h3_detected, h1_detected), 
+                   names_to = "pcr_target", 
+                   values_to = "detection_status") %>%
+      mutate(pcr_target = case_when(pcr_target == "h1_detected" ~ "H1",
+                                    TRUE ~ pcr_target)) %>%
+      filter(pcr_target == "H1") %>%
+      filter(sample_collect_date >= max(sample_collect_date)-14) # to remove data from prior months
+    
+    
+    flua_subtyping_conc_data <- IDB_FluA_ST %>%
+      select(wwtp_name, sample_id, sample_collect_date, 
+             h1_pcr_target_avg_conc, h3_pcr_target_avg_conc, h5_pcr_target_avg_conc) %>%
+      pivot_longer(cols = c(h5_pcr_target_avg_conc, h3_pcr_target_avg_conc, h1_pcr_target_avg_conc), 
+                   names_to = "pcr_target", 
+                   values_to = "pcr_target_avg_conc") %>%
+      mutate(pcr_target = case_when(pcr_target == "h1_pcr_target_avg_conc" ~ "H1",
+                                    TRUE ~ pcr_target)) %>%
+      filter(pcr_target == "H1")
+
+    
+    viralconc_flua_subtyping_H1 <-  flua_subtyping_conc_data %>%
+      left_join(flua_subtyping_detection, by = c("wwtp_name", "sample_id", "sample_collect_date", "pcr_target")) %>%
+      mutate(sample_id = case_when(sample_id == "" ~ NA, TRUE ~ sample_id)) %>%
+      rename(output_viral_conc = pcr_target_avg_conc) %>%
+      filter(wwtp_name %in% input$wwtp_name) %>%
+      select(sample_id, wwtp_name, sample_collect_date, 
+             output_viral_conc, detection_status#, pcr_target_below_lod
+      ) %>% 
+      filter(!is.na(detection_status)) %>%
+      group_by(wwtp_name) %>%
+      filter(sample_collect_date >= max(sample_collect_date)-14) %>%
+      mutate(detection_status = factor(detection_status, levels = result_options)) %>%  # Set custom order
+      arrange(detection_status, output_viral_conc) %>% # Arrange in the desired order 
+      rename(h1_viral_conc = output_viral_conc) %>%
+      filter(!is.na(sample_id))
+
+    
+kable(viralconc_flua_subtyping_H1, align = "c", caption = "H1 Subtyping") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+    
+  
+```
+
+### **Hx Trace Detection Plot**
+- From 1_CDPHE_Wastewater_Data_[date] file.
+- This report includes all flu trace detections and real detections.
+- Trace Detection: pcr_target_below_LOD = yes, pcr_target_avg_conc > 0 (prior to LOD data manipulation)
+- Not Detected: pcr_target_below_LOD = yes, pcr_target_avg_conc = 0 (prior to LOD data manipulation)
+- Detected: pcr_target_below_LOD = no, pcr_target_avg_conc >= 1200 (prior to LOD data manipulation, for LP3+)
+```{r hx trace detactions plot}
+
+
+# Create graph for trace H5 results
+subset <- fulldata %>%
+  filter(pcr_target == "H5")%>%
+  mutate(detect_status = 
+           case_when(pcr_target_below_lod == "yes" | pcr_target_avg_conc == 0 ~ "Not detected", 
+                     pcr_target_below_lod == "yes" & pcr_target_avg_conc > 0 ~ "Trace", 
+                     pcr_target_below_lod == "no" & pcr_target_avg_conc >= 1200 ~ "Detected", 
+                     TRUE ~ "no category")) %>%
+  mutate(sample_collect_date = as.Date(sample_collect_date))%>%
+  select(wwtp_name, pcr_target, sample_collect_date, pcr_target_avg_conc, pcr_target_below_lod, detect_status)
+
+ggplot(data = subset)+
+  geom_point(aes(x=sample_collect_date, y=pcr_target_avg_conc, color=detect_status), size=2, alpha=.9)+
+  scale_x_date(date_labels = "%B")+
+  theme(axis.text.x = element_text(angle=45, hjust = 1))+
+  labs(x = "Sample Collection Date", y = "Flu A H5 Viral Concentration (gc/L)", 
+       title = "H5 Wastewater Viral Concentration by Sample Collection Date and Detection Category", 
+       color = "H5 WW Detection Status")+
+  scale_color_manual(values=c("#D55E00","#999999", "#F0E442"))+
+  theme_gdocs()
+
+
+```
+<br>
+<br>
+<br>
+
+## Section Six: Data Check Report {.tabset}
+
+If any results have ***sd_above_median > 3***, let supervisor know and verify with lab that the pcr_target_avg_conc value is correct. Data is filtered for *active participation status for pathogen* (includes internal and public utilities).
+
+
+### Sars-CoV-2
+
+```{r data check 35mL sars}
+datacheck_report_sars <- datacheck_report_sars %>%
+  arrange(desc(sd_above_median)) %>%
+  select(wwtp_name, wwtp_mean, wwtp_median, recent_date1, recent_conc1, recent_date2, recent_conc2, current_percentile, sd_above_median) %>%
+  filter(wwtp_name %in% Active_utilities_sars$wwtp_name)
+
+
+kable(datacheck_report_sars, align = "c", caption = "Sars-CoV-2 Data Check") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+```
+
+
+### PanRSV
+
+```{r data check 35mL rsv}
+datacheck_report_rsv <- datacheck_report_rsv %>%
+  arrange(desc(sd_above_median)) %>%
+  select(wwtp_name, wwtp_mean, wwtp_median, recent_date1, recent_conc1, current_percentile, sd_above_median) %>%
+  filter(wwtp_name %in% Active_utilities_sars$wwtp_name)
+
+
+
+kable(datacheck_report_rsv, align = "c", caption = "PanRSV Data Check") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+```
+
+### Influenza A
+
+```{r data check 35mL flu a}
+datacheck_report_flua <- datacheck_report_flua %>%
+  arrange(desc(sd_above_median)) %>%
+  select(wwtp_name, wwtp_mean, wwtp_median, recent_date1, recent_conc1, current_percentile, sd_above_median) %>%
+  filter(wwtp_name %in% Active_utilities_sars$wwtp_name)
+
+
+
+kable(datacheck_report_flua, align = "c", caption = "Influenza A Data Check") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+```
+
+
+### Influenza B
+
+```{r data check 35mL flu b}
+datacheck_report_flub <- datacheck_report_flub %>%
+  arrange(desc(sd_above_median)) %>%
+  select(wwtp_name, wwtp_mean, wwtp_median, recent_date1, recent_conc1, current_percentile, sd_above_median) %>%
+  filter(wwtp_name %in% Active_utilities_sars$wwtp_name)
+
+
+kable(datacheck_report_flub, align = "c", caption = "Influenza B Data Check") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+```
+
+
+### H5
+
+```{r data check 35mL H5}
+datacheck_report_H5 <- datacheck_report_H5 %>%
+  arrange(desc(sd_above_median)) %>%
+  select(wwtp_name, wwtp_mean, wwtp_median, recent_date1, recent_conc1, current_percentile, sd_above_median) %>%
+  filter(wwtp_name %in% Active_utilities_sars$wwtp_name)
+
+
+
+kable(datacheck_report_H5, align = "c", caption = "H5 Data Check") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+```
+
+
+### H3
+
+```{r data check 35mL H3}
+datacheck_report_H3 <- datacheck_report_H3 %>%
+  arrange(desc(sd_above_median)) %>%
+  select(wwtp_name, wwtp_mean, wwtp_median, recent_date1, recent_conc1, current_percentile, sd_above_median) %>%
+  filter(wwtp_name %in% Active_utilities_sars$wwtp_name)
+
+
+
+kable(datacheck_report_H3, align = "c", caption = "H3 Data Check") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+```
+
+### H1
+
+```{r data check 35mL H1}
+datacheck_report_H1 <- datacheck_report_H1 %>%
+  arrange(desc(sd_above_median)) %>%
+  select(wwtp_name, wwtp_mean, wwtp_median, recent_date1, recent_conc1, current_percentile, sd_above_median) %>%
+  filter(wwtp_name %in% Active_utilities_sars$wwtp_name)
+
+
+
+kable(datacheck_report_H1, align = "c", caption = "H1 Data Check") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+```
+
+
+
+<br>
+<br>
+<br>
+<br>
+
+
+## Section Seven: Samples Below LOD {.tabset}
+
+The following samples are marked below LOD. Data is filtered to the last *14 days from max sample date in dataset* and *active participation status for pathogen* (includes internal and public utilities).
+
+### **Sar-CoV-2**
+
+```{r below LOD sars}
+
+samples_belowLOD <- IDBoutput %>%
+  select(c(sample_id, utility, pcr_target, measure_date, viral_conc_raw, quality_flag, pcr_target_below_lod)) %>%
+  filter(pcr_target == "sars-cov-2") %>%
+  filter(utility %in% Active_utilities_sars$wwtp_name) %>%
+  filter(!is.na(viral_conc_raw)) %>%
+  select(-pcr_target) %>%
+  filter(measure_date >= max(measure_date)-14) %>% #to remove any below LOD from prior months
+  group_by(utility) %>%
+  filter(pcr_target_below_lod != "no")
+
+kable(samples_belowLOD, align = "c", caption = "Sars-CoV-2 Samples Below LOD") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+
+```
+
+
+### **PanRSV**
+
+```{r below LOD rsv}
+
+samples_belowLOD <- IDBoutput %>%
+  select(c(sample_id, utility, pcr_target, measure_date, viral_conc_raw, quality_flag, pcr_target_below_lod)) %>%
+  filter(pcr_target == "RSV A + B Combined") %>%
+  filter(utility %in% Active_utilities_rsv$wwtp_name) %>%
+  filter(!is.na(viral_conc_raw)) %>%
+  select(-pcr_target) %>%
+  filter(measure_date >= max(measure_date)-14) %>% #to remove any below LOD from prior months
+  group_by(utility) %>%
+  filter(pcr_target_below_lod != "no")
+
+kable(samples_belowLOD, align = "c", caption = "PanRSV Samples Below LOD") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+
+```
+
+
+### **Influenza A**
+
+```{r below LOD flu a}
+
+samples_belowLOD <- IDBoutput %>%
+  select(c(sample_id, utility, pcr_target, measure_date, viral_conc_raw, quality_flag, pcr_target_below_lod)) %>%
+  filter(pcr_target == "FLUAV") %>%
+  filter(utility %in% Active_utilities_flua$wwtp_name) %>%
+  filter(!is.na(viral_conc_raw)) %>%
+  select(-pcr_target) %>%
+  filter(measure_date >= max(measure_date)-14) %>% #to remove any below LOD from prior months
+  group_by(utility) %>%
+  filter(pcr_target_below_lod != "no")
+
+kable(samples_belowLOD, align = "c", caption = "Influenza A Samples Below LOD") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+
+```
+
+
+### **Influenza B**
+
+```{r below LOD flu b}
+
+samples_belowLOD <- IDBoutput %>%
+  select(c(sample_id, utility, pcr_target, measure_date, viral_conc_raw, quality_flag, pcr_target_below_lod)) %>%
+  filter(pcr_target == "FLUBV") %>%
+  filter(utility %in% Active_utilities_flub$wwtp_name) %>%
+  filter(!is.na(viral_conc_raw)) %>%
+  select(-pcr_target) %>%
+  filter(measure_date >= max(measure_date)-14) %>% #to remove any below LOD from prior months
+  group_by(utility) %>%
+  filter(pcr_target_below_lod != "no")
+
+kable(samples_belowLOD, align = "c", caption = "Influenza B Samples Below LOD") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+
+```
+
+
+### **H5**
+
+```{r below LOD H5}
+
+samples_belowLOD <- IDBoutput %>%
+  select(c(sample_id, utility, pcr_target, measure_date, viral_conc_raw, quality_flag, pcr_target_below_lod)) %>%
+  filter(pcr_target == "H5") %>%
+  filter(utility %in% Active_utilities_flua$wwtp_name) %>%
+  filter(!is.na(viral_conc_raw)) %>%
+  select(-pcr_target) %>%
+  filter(measure_date >= max(measure_date)-14) %>% #to remove any below LOD from prior months
+  group_by(utility) %>%
+  filter(pcr_target_below_lod != "no")
+
+kable(samples_belowLOD, align = "c", caption = "H5 Samples Below LOD") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+
+```
+
+
+### **H3**
+
+```{r below LOD H3}
+
+samples_belowLOD <- IDBoutput %>%
+  select(c(sample_id, utility, pcr_target, measure_date, viral_conc_raw, quality_flag, pcr_target_below_lod)) %>%
+  filter(pcr_target == "H3") %>%
+  filter(utility %in% Active_utilities_flua$wwtp_name) %>%
+  filter(!is.na(viral_conc_raw)) %>%
+  select(-pcr_target) %>%
+  filter(measure_date >= max(measure_date)-14) %>% #to remove any below LOD from prior months
+  group_by(utility) %>%
+  filter(pcr_target_below_lod != "no")
+
+kable(samples_belowLOD, align = "c", caption = "H3 Samples Below LOD") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+
+```
+
+
+
+### **H1**
+
+```{r below LOD H1}
+
+samples_belowLOD <- IDBoutput %>%
+  select(c(sample_id, utility, pcr_target, measure_date, viral_conc_raw, quality_flag, pcr_target_below_lod)) %>%
+  filter(pcr_target == "H1") %>%
+  filter(utility %in% Active_utilities_flua$wwtp_name) %>%
+  filter(!is.na(viral_conc_raw)) %>%
+  select(-pcr_target) %>%
+  filter(measure_date >= max(measure_date)-14) %>% #to remove any below LOD from prior months
+  group_by(utility) %>%
+  filter(pcr_target_below_lod != "no")
+
+kable(samples_belowLOD, align = "c", caption = "H1 Samples Below LOD") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+
+
+```
+
+
+<br>
+<br>
+<br>
+
+
+## Section Eight: County Data  {.tabset}
+
+- Clinical data is filtered for the *last 60 days from System Date*.
+- Please verify we have recent clinical data for each pathogen.
+
+### **Sars-CoV-2** {.tabset}
+- Data pulled from DLH
+
+#### **County Cases** 
+```{r county cases - sars, fig.width=10, fig.height=40}
+
+sars_casedata <- CountyCases_sars %>%
+  filter(pcr_target == "sars-cov-2") %>%
+  select(County, Date, County_cases_3dayavg_r100Kutil) %>%
+  filter(!County_cases_3dayavg_r100Kutil == 0)
+
+
+
+if (max(sars_casedata$Date) <= Sys.Date() - 60) {
+  print(paste0("Data older than 60 days. Check source to verify data is pulling correctly. Last date: ", max(sars_casedata$Date)))
+} else {
+  sars_casedata <- sars_casedata %>%
+      filter(Date >= Sys.Date() - 60) 
+  
+  max_y <- sars_casedata
+  max_y <- max(max_y$County_cases_3dayavg_r100Kutil, na.rm = TRUE)
+  max_y <- abs(max_y)
+
+
+ggplotly(
+  ggplot() +
+    geom_point(
+      data = sars_casedata,
+      aes(
+        x = Date,
+        y = County_cases_3dayavg_r100Kutil,
+        fill = factor(County),
+        text = paste(
+          "<b>County:</b>", County,
+          "<br><b>Date:</b> ",
+          Date,
+          "<br><b>Case Count:</b>",
+          format(round(as.numeric(County_cases_3dayavg_r100Kutil), 1), nsmall = 1, big.mark = ","))
+        )
+    ) +
+    geom_line(
+      data = sars_casedata,
+      aes(x = Date, y = County_cases_3dayavg_r100Kutil, fill = factor(County), color = factor(County))
+    ) +
+    facet_wrap(~ County, ncol=1) +  # Facet by utility
+    ylim(0, max_y*1.25) +
+    theme_gdocs() +
+    labs(y = "Number of Cases per 100k",
+         x = "Test Date",
+         #fill = "Utility",
+         title = "Sars-Cov-2 Case Data per 100k (3-day average)") +
+    theme(text = element_text(family = "Arial", size = 8),
+          plot.title = element_text(hjust = 0.5),
+          legend.position = "none",
+          
+         
+          ),
+  tooltip = "text"
+)
+}
+
+
+
+
+```
+
+#### **Hospitalizations** 
+```{r county cases - sars hosp, fig.width=10, fig.height=30}
+
+#sars hospitalizations
+sars_hospdata <- CountyCases_sars %>%
+  filter(pcr_target == "sars-cov-2") %>%
+  select(County, Date, County_hosp_3dayavg_r100Kutil) %>%
+  filter(!County_hosp_3dayavg_r100Kutil == 0)
+
+  
+
+if (max(sars_hospdata$Date) <= Sys.Date() - 60) {
+  print(paste0("Data older than 60 days. Check source to verify data is pulling correctly. Last date: ", max(sars_hospdata$Date)))
+  } else {
+  sars_hospdata <- sars_hospdata %>%
+      filter(Date >= Sys.Date() - 60) 
+  
+max_y <- sars_hospdata
+max_y <- max(max_y$County_hosp_3dayavg_r100Kutil, na.rm = TRUE)
+max_y <- abs(max_y)
+
+
+ggplotly(
+  ggplot() +
+    geom_point(
+      data = sars_hospdata,
+      aes(
+        x = Date,
+        y = County_hosp_3dayavg_r100Kutil,
+        fill = factor(County),
+        text = paste(
+          "<b>County:</b>", County,
+          "<br><b>Date:</b> ",
+          Date,
+          "<br><b>Case Count:</b>",
+          format(round(as.numeric(County_hosp_3dayavg_r100Kutil), 1), nsmall = 1, big.mark = ","))
+        )
+    ) +
+    geom_line(
+      data = sars_hospdata,
+      aes(x = Date, y = County_hosp_3dayavg_r100Kutil, fill = factor(County), color = factor(County))
+    ) +
+    facet_wrap(~ County, ncol=1) +  # Facet by utility
+    ylim(0, max_y*1.25) +
+    theme_gdocs() +
+    labs(y = "Number of Hospitalizations per 100k",
+         x = "Test Date",
+         #fill = "Utility",
+         title = "Sars-Cov-2 Hospitalizations per 100k (3-day average)") +  
+    theme(text = element_text(family = "Arial", size = 8),
+          plot.title = element_text(hjust = 0.5),
+          legend.position = "none",
+           
+         
+          ),
+  tooltip = "text"
+)
+
+}
+
+```
+
+### **RSV** {.tabset}
+- ED Visit case data pulled from Google Drive folder "COVID-19 Syndromic Surveillance"
+- Hospitalization data pulled from J drive EIP folder
+
+#### **Total ED Visits**
+```{r county cases - rsv, fig.width=10, fig.height=10}
+
+#rsv county cases
+rsv_casedata <- CountyCases_FluRSV %>%
+  select(County, Date, Percent_Diag_RSV) %>%
+  pivot_longer(!c(County, Date), names_to = "metric", values_to = "CountyCases") %>%
+  mutate(metric = case_when(metric == "Percent_Diag_RSV" ~ "% RSV ED Visits", TRUE ~ metric)) 
+
+if (max(rsv_casedata$Date) <= Sys.Date() - 60) {
+  print(paste0("Data older than 60 days. Check source to verify data is pulling correctly. Last date: ", max(rsv_casedata$Date)))
+  } else {
+  rsv_casedata <- rsv_casedata %>%
+      filter(Date >= Sys.Date() - 60) 
+  
+max_y <- rsv_casedata %>%
+  filter(metric == "% RSV ED Visits")
+max_y <- max(max_y$CountyCases, na.rm = TRUE)
+max_y <- abs(max_y)
+
+
+ggplotly(
+  ggplot() +
+    geom_point(
+      data = rsv_casedata,
+      aes(
+        x = Date,
+        y = CountyCases,
+        fill = factor(County),
+        text = paste0(
+          "<b>County:</b>", County,
+          "<br><b>Date:</b> ",
+          Date,
+          "<br><b>Percent of Cases:</b>",
+          format(round(as.numeric(CountyCases), 2), nsmall = 2, big.mark = ","), "%")
+        )
+    ) +
+    geom_line(
+      data = rsv_casedata,
+      aes(x = Date, y = CountyCases, fill = factor(County), color = factor(County))
+    ) +
+    facet_wrap(~ County, ncol=1) +  # Facet by utility
+    ylim(0, max_y*1.25) +
+    theme_gdocs() +
+    labs(y = "Percent of Total ED Visits",
+         x = "Test Date",
+         #fill = "Utility",
+         title = "RSV Percent ED Visits per County") +
+    theme(text = element_text(family = "Arial", size = 8),
+          plot.title = element_text(hjust = 0.5),
+          legend.position = "none",
+          
+         
+          ),
+  tooltip = "text"
+)
+}
+
+
+
+```
+
+#### **Hospitalized Admission Rate**
+```{r hosp - rsv, fig.width=10, fig.height=10}
+
+#rsv county cases
+rsv_hosp <- CountyCases_FluRSV_hosp %>%
+  filter(pathogen == "RSV") %>%
+  select(County, Date, Hospitalized_CaseCount_r100Kutil) 
+
+if (max(rsv_hosp$Date) <= Sys.Date() - 60) {
+  print(paste0("Data older than 60 days. Check source to verify data is pulling correctly. Last date: ", max(rsv_hosp$Date)))
+  } else {
+  rsv_hosp <- rsv_hosp %>%
+      filter(Date >= Sys.Date() - 60) 
+ 
+  
+max_y <- rsv_hosp
+max_y <- max(max_y$Hospitalized_CaseCount_r100Kutil, na.rm = TRUE)
+max_y <- abs(max_y)
+
+
+ggplotly(
+  ggplot() +
+    geom_point(
+      data = rsv_hosp,
+      aes(
+        x = Date,
+        y = Hospitalized_CaseCount_r100Kutil,
+        fill = factor(County),
+        text = paste0(
+          "<b>County:</b>", County,
+          "<br><b>Date:</b> ",
+          Date,
+          "<br><b>Hospitalized Admission Rate:</b>",
+          format(round(as.numeric(Hospitalized_CaseCount_r100Kutil), 2), nsmall = 2, big.mark = ","), "%")
+        )
+    ) +
+    geom_line(
+      data = rsv_hosp,
+      aes(x = Date, y = Hospitalized_CaseCount_r100Kutil, fill = factor(County), color = factor(County))
+    ) +
+    facet_wrap(~ County, ncol=1) +  # Facet by utility
+    ylim(0, max_y*1.25) +
+    theme_gdocs() +
+    labs(y = "Hospitalized Admission Rate",
+         x = "Test Date",
+         #fill = "Utility",
+         title = "RSV Hospitalizations per County") +
+    theme(text = element_text(family = "Arial", size = 8),
+          plot.title = element_text(hjust = 0.5),
+          legend.position = "none",
+          
+         
+          ),
+  tooltip = "text"
+)
+}
+
+
+
+```
+
+
+
+
+### **Influenza** {.tabset}
+- ED Visit case data pulled from Google Drive folder "COVID-19 Syndromic Surveillance"
+- Hospitalization data pulled from J drive EIP folder
+
+#### **Total ED Visits**
+```{r county cases - flu, fig.width=10, fig.height=10}
+
+#flu county cases
+flu_casedata <- CountyCases_FluRSV %>%
+  select(County, Date, Percent_Diag_Flu) %>%
+  pivot_longer(!c(County, Date), names_to = "metric", values_to = "CountyCases") %>%
+  mutate(metric = case_when(metric == "Percent_Diag_Flu" ~ "% Influenza ED Visits", TRUE ~ metric)) 
+
+if (max(flu_casedata$Date) <= Sys.Date() - 60) {
+  print(paste0("Data older than 60 days. Check source to verify data is pulling correctly. Last date: ", max(flu_casedata$Date)))
+  } else {
+  flu_casedata <- flu_casedata %>%
+      filter(Date >= Sys.Date() - 60) 
+ 
+max_y <- flu_casedata %>%
+  filter(metric == "% Influenza ED Visits")
+max_y <- max(max_y$CountyCases, na.rm = TRUE)
+max_y <- abs(max_y)
+
+
+ggplotly(
+  ggplot() +
+    geom_point(
+      data = flu_casedata,
+      aes(
+        x = Date,
+        y = CountyCases,
+        fill = factor(County),
+        text = paste0(
+          "<b>County:</b>", County,
+          "<br><b>Date:</b> ",
+          Date,
+          "<br><b>Percent of Cases:</b>",
+          format(round(as.numeric(CountyCases), 2), nsmall = 2, big.mark = ","), "%")
+        )
+    ) +
+    geom_line(
+      data = flu_casedata,
+      aes(x = Date, y = CountyCases, fill = factor(County), color = factor(County))
+    ) +
+    facet_wrap(~ County, ncol=1) +  # Facet by utility
+    ylim(0, max_y*1.25) +
+    theme_gdocs() +
+    labs(y = "Percent of Total ED Visits",
+         x = "Test Date",
+         #fill = "Utility",
+         title = "Influenza Percent ED Visits per County") +
+    theme(text = element_text(family = "Arial", size = 8),
+          plot.title = element_text(hjust = 0.5),
+          legend.position = "none",
+          
+         
+          ),
+  tooltip = "text"
+)
+
+}
+
+
+```
+
+#### **Hospitalized Admission Rate**
+```{r hosp - flu, fig.width=10, fig.height=10}
+
+#flu county cases
+flu_hosp <- CountyCases_FluRSV_hosp %>%
+  filter(pathogen == "Influenza") %>%
+  select(County, Date, Hospitalized_CaseCount_r100Kutil) 
+
+if (max(flu_hosp$Date) <= Sys.Date() - 60) {
+  print(paste0("Data older than 60 days. Check source to verify data is pulling correctly. Last date: ", max(flu_hosp$Date)))
+  } else {
+  flu_hosp <- flu_hosp %>%
+      filter(Date >= Sys.Date() - 60) 
+
+# Check if the dataframe is empty
+if (nrow(flu_hosp) == 0) {
+  
+  last_hosp_date <- CountyCases_FluRSV_hosp %>%
+  filter(pathogen == "Influenza") %>%
+  select(County, Date, Hospitalized_CaseCount_r100Kutil) %>%
+  filter(Date >= max(Date)) %>%
+  select(Date) %>%
+  distinct()
+
+  last_hosp_date <- format(as.Date(last_hosp_date$Date[1]), "%Y-%m-%d")
+
+  cat("No recent hospitalization data. \nLast available date:", last_hosp_date)
+} else {
+  
+  max_y <- flu_hosp
+  max_y <- max(max_y$Hospitalized_CaseCount_r100Kutil, na.rm = TRUE)
+  max_y <- abs(max_y)
+  
+  
+  ggplotly(
+    ggplot() +
+      geom_point(
+        data = flu_hosp,
+        aes(
+          x = Date,
+          y = Hospitalized_CaseCount_r100Kutil,
+          fill = factor(County),
+          text = paste0(
+            "<b>County:</b>", County,
+            "<br><b>Date:</b> ", Date,
+            "<br><b>Hospitalized Admission Rate:</b>",
+            format(round(as.numeric(Hospitalized_CaseCount_r100Kutil), 2), nsmall = 2, big.mark = ","), "%")
+          )
+      ) +
+      geom_line(
+        data = flu_hosp,
+        aes(x = Date, y = Hospitalized_CaseCount_r100Kutil, fill = factor(County), color = factor(County))
+      ) +
+      facet_wrap(~ County, ncol=1) +  # Facet by utility
+      ylim(0, max_y*1.25) +
+      theme_gdocs() +
+      labs(y = "Hospitalized Admission Rate",
+           x = "Test Date",
+           #fill = "Utility",
+           title = "Influenza Hospitalizations per County") +
+      theme(text = element_text(family = "Arial", size = 8),
+            plot.title = element_text(hjust = 0.5),
+            legend.position = "none",
+            
+           
+            ),
+    tooltip = "text"
+  )
+}
+
+}
+
+```
+
+
+
+<br>
+<br>
+<br>
+
+
+## Section Nine: Quality Control Reports {.tabset}
+
+- Please verify samples are correct in the reports below.
+- These most likely show up in NWSS QC Reports.
+- Data is not filtered by date or utility activation status.
+
+
+### **Quality Flag Yes**
+#### **Quality Flag marked "yes" with pcr_target_below_lod marked "no"**
+- QC Report File: **QualityFlag_yes_[date]**
+- These are the samples that have **quality_flag = "yes" but pcr_target_below_lod = "no"**
+- Verify with lab the pcr_target_below_lod column is correct on the following samples:
+
+```{r quality flag yes issues}
+
+
+if (quality_flag_yes_report$wwtp_name[1] == "no data") {
+  print("There are no samples with quality_flag = `yes` and pcr_target_below_lod = `no`")
+} else {
+  kable(quality_flag_yes_report, align = "c") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+}
+
+```
+<br>
+<br>
+
+### **Quality Flag NA**
+#### **Quality Flag marked "NA"**
+- QC Report File: **QualityFlag_Issues_[date]**
+- These are the samples that have **quality_flag = NA**
+- Verify with lab what quality_flag should be for the following samples:
+
+```{r quality flag NA}
+
+if (quality_flag_issues_report$wwtp_name[1] == "no data") {
+  print("All samples are have quality_flag marked correctly")
+} else {
+
+  quality_flag_issues_report <- quality_flag_issues_report %>%
+    arrange(quality_flag, pcr_target, sample_collect_date, wwtp_name) %>%
+    filter(is.na(quality_flag)) %>%
+    select(-"...1")
+  
+  kable(quality_flag_issues_report, align = "c") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+}
+
+```
+<br>
+<br>
+
+### **Quality Flag Other**
+#### **Quality Flag marked something other than "yes" or "no" or NA**
+
+- QC Report File: **QualityFlag_Issues_[date]**
+- These are samples that have **quality_flag as something other than "yes", "no", or NA**.
+- Data arranged by quality flag. 
+- Verify with lab what quality_flag should be for the following samples:
+
+```{r quality flag yes/no issues}
+
+
+if (quality_flag_issues_report$wwtp_name[1] == "no data") {
+  print("All samples are have quality_flag marked correctly")
+} else {
+  quality_flag_issues_report <- quality_flag_issues_report %>%
+  arrange(quality_flag, pcr_target, sample_collect_date, wwtp_name) %>%
+  filter(!is.na(quality_flag)) %>%
+  select(-"...1")
+  
+  kable(quality_flag_issues_report, align = "c") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+}
+
+```
+
+
+
+### **Missing Extraction Method**
+#### **Missing Extraction Method**
+- QC Report File: **ExtractionMethod_Check_Report_[date]**
+- Please verify the following samples have the correct ***Extraction Method*** listed:
+
+```{r incorrect extraction method}
+
+
+if (extractionmethod_report$wwtp_name[1] == "no data") {
+  print("No missing Extraction Methods")
+} else {
+  kable(extractionmethod_report, align = "c") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+}
+```
+
+
+
+### **Missing NTC Amplify**
+#### **NTC Amplify**
+- QC Report File: **ntc_amplify_report_[date]**
+- These are the samples that have ntc_amplify as something other than "no".
+- Verify with lab why this field isn't "no" on the following samples:
+
+```{r ntc amplify issues}
+
+
+if (ntc_amplify_report$pcr_target[1] == "no data") {
+  print("All samples are have ntc_amplify marked correctly")
+} else {
+  kable(ntc_amplify_report, align = "c") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+}
+
+```
+
+
+### **Missing Flow Rates**
+#### **Missing Flow Rates**
+- QC Report File: **Flow_Rate_Check_Report_[date]** (includes flow and sample type)
+- The following samples have missing flow rates or flow rate > 80. **These are needed to calculate flow/population normalized viral concentrations.**
+- Once found, add them to the "Missing Flow Rates" file under K:/Wastewater Surveillance/R codes/data validation/flow rates folder.
+- Check Lab Tableau and/or ask Abby/Summer to determine what the flow rates should be for the following samples:
+
+```{r missing flow rates}
+missing_flowrates_report <- missing_flowsample_report %>%
+  filter(flow_check == "check flow") %>%
+  arrange(pcr_target, desc(sample_collect_date), wwtp_name)
+           
+
+if (missing_flowrates_report$lab_phase[1] == "no data") {
+  print("All samples are have flow_rate marked correctly")
+} else {
+  kable(missing_flowrates_report, align = "c") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+}
+
+```
+
+
+### **Missing Sample Type**
+#### **Missing Sample Type**
+- QC Report File: **Flow_Rate_Check_Report_[date]** (includes flow and sample type)
+- The following samples have missing sample types.
+- Once found, add them to the "Missing Flow Rates" file under K:/Wastewater Surveillance/R codes/data validation/flow rates folder (this file is used for both missing flow rates and sample types).
+- Check Lab Tableau and/or ask Abby/Summer to determine what the sample type should be for the following samples:
+
+```{r missing sample types}
+missing_sampletype_report <- missing_flowsample_report %>%
+  filter(sample_type_check == "check sample type") %>%
+  arrange(pcr_target, desc(sample_collect_date), wwtp_name)
+           
+
+if (missing_sampletype_report$lab_phase[1] == "no data") {
+  print("All samples are have sample type marked correctly")
+} else {
+  kable(missing_sampletype_report, align = "c") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+}
+
+```
+
+### **ND Value Check**
+#### **ND Value Check**
+- QC Report File: **ND_Value_Check_Report_[date]**
+- No need to adjust these yet. This is more for reference.
+- The following samples were sent as "ND" in the results by the lab: 
+
+```{r nd values check}
+
+
+if (ND_values_report$wwtp_name[1] == "no data") {
+  print("All samples are have ntc_amplify marked correctly")
+} else {
+  kable(ND_values_report, align = "c") %>%
+    kable_styling() %>%
+    kable_material(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "left")
+}
+
+```
+
