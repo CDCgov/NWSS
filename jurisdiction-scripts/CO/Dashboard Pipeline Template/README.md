@@ -1,6 +1,13 @@
 **Wastewater Surveillance Internal Dashboard**  
 **NWSS Template SOP**
 
+Designed for wastewater surveillance program jurisdictions, this template provides a flexible framework for building a data pipeline that cleans, transforms, and outputs data to a password-protected RShiny dashboard, as well as a formatted data file for submission to the National Wastewater Surveillance System (NWSS). 
+All included data is mock data, supplied to help users test and validate the pipeline before integrating their own datasets. The document is intended to support teams in adapting the template to meet the needs of their specific wastewater surveillance programs.
+
+This pipeline template was developed using R version 4.3.1 and RStudio version 2023.09.1 (Build 494). To minimize potential package compatibility issues, we recommend installing these or similar versions. Older versions may cause issues, particularly with the bsts library. Additionally, the formatted file intended to support submission to NWSS was designed alongside the NWSS Data Dictionary_v6.2.0_2025-09-18, which can be found in the reference_sheets folder within the Dashboard Pipeline Template folder on the repo.
+
+This template, including the mock datasets, was created and is maintained by the Colorado Wastewater Surveillance team. For questions or support, please contact: **cdphe_wastewater_surv@state.co.us**.
+
 **Internal Dashboard Login Information**  
 **Username:** NWSSTemplate@NWSSdemo.com   
 **Password:** NWSSTemplate  
