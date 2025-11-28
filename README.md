@@ -2,30 +2,10 @@
 
 This is the data repository for the [National Wastewater Surveillance System (NWSS)](https://www.cdc.gov/nwss/wastewater-surveillance/index.html). The intended purpose of this data repository is to facilite code sharing between jurisdictions and CDC. 
 
-
-**General disclaimer**: This repository was created for use by CDC programs to collaborate on public health related projects in support of the [CDC mission](https://www.cdc.gov/about/organization/mission.htm).  GitHub is not hosted by the CDC, but is a third party website used by CDC and its partners to share information and collaborate on software. CDC use of GitHub does not imply an endorsement of any one particular service, product, or enterprise. 
-
-## Information on Submitting Code 
-
-* Each jurisdiction should create a subdirectory under [jurisdiction-scripts](/workspaces/NWSS/jurisdiction-scripts). 
-  * Please use your jurisdiction's abbrevation used in reporting_jurisdiction in DCIPHER. 
-* Add any scripts your jurisdiction would like to share. 
-  * When possible, please upload scripts as separate files.
-  * It is helpful to include notes (in markdown format, with .md files), packages used (with a requirements.txt file), etc.
-* File names should be descriptive and indicate the language used. 
-  * Example: cdc_trend_regression.R or cdc_trend_regression.py
-     
 **Please reach out to nwss@cdc.gov if you have any questions**.
 
-
-## Related Documents
-
-* [Open Practices](open_practices.md)
-* [Rules of Behavior](rules_of_behavior.md)
-* [Thanks and Acknowledgements](thanks.md)
-* [Disclaimer](DISCLAIMER.md)
-* [Contribution Notice](CONTRIBUTING.md)
-* [Code of Conduct](code-of-conduct.md)
+## General disclaimer
+This repository was created for use by CDC programs to collaborate on public health related projects in support of the [CDC mission](https://www.cdc.gov/about/organization/mission.htm).  GitHub is not hosted by the CDC, but is a third party website used by CDC and its partners to share information and collaborate on software. CDC use of GitHub does not imply an endorsement of any one particular service, product, or enterprise. 
 
 ## Public Domain Standard Notice
 This repository constitutes a work of the United States Government and is not
