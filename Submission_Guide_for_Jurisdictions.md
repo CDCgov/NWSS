@@ -2,7 +2,7 @@
 
 ## Overview
 
-To promote transparency, reproducibility, and shared learning across the National Wastewater Surveillance System (NWSS), this repository is intended for collaboration among jurisdictions, CDC, and the public. **All repository contents—including forks, branches, issues, and pull requests—are fully public.**  
+To promote transparency, reproducibility, and shared learning, this repository is intended for collaboration among jurisdictions, CDC, and the public. **All repository contents—including forks, branches, issues, and pull requests—are fully public.**  
 **Do not submit any material that is not appropriate for public release.**
 
 Jurisdictions are encouraged to contribute code, analytic workflows, and tools that support NWSS program goals. Please follow the guidance below when adding materials to this repository.
