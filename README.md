@@ -1,7 +1,3 @@
-# National Wastewater Surveillance System (NWSS) 
-
-This is the data repository for the [National Wastewater Surveillance System (NWSS)](https://www.cdc.gov/nwss/wastewater-surveillance/index.html). The intended purpose of this data repository is to facilite code sharing between jurisdictions and CDC. 
-
 # National Wastewater Surveillance System (NWSS) Data Repository
 
 This is the data repository for the [National Wastewater Surveillance System (NWSS)](https://www.cdc.gov/nwss/wastewater-surveillance/index.html).  
