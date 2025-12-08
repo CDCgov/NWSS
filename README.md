@@ -4,7 +4,7 @@ This is the data repository for the [National Wastewater Surveillance System (NW
 
 Jurisdiction-contributed projects are contained within the `jurisdiction-scripts/` directory and are created and maintained by the respective jurisdictions.
 
-For detailed guidance on how jurisdictions should submit code—including directory structure, contribution workflow, and required documentation—please refer to **[Submission_Guide_for_Jurisdictions](Submission_Guide_for_Jurisdictions.md)**
+For detailed guidance on how jurisdictions should submit code—including directory structure, contribution workflow, and required documentation—please refer to [Submission_Guide_for_Jurisdictions](Submission_Guide_for_Jurisdictions.md)
 
 
 **Please reach out to nwss@cdc.gov if you have any questions**.
