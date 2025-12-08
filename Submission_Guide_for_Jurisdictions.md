@@ -7,8 +7,6 @@ To promote transparency, reproducibility, and shared learning, this repository i
 
 Jurisdictions are encouraged to contribute code, analytic workflows, and tools that support NWSS program goals. Please follow the guidance below when adding materials to this repository.
 
----
-
 ## 1. Contribute Through Fork and Pull Request
 
 All contributions must use a standard GitHub fork-and-pull-request workflow:
@@ -19,22 +17,16 @@ All contributions must use a standard GitHub fork-and-pull-request workflow:
 
 If you are new to GitHub, consult GitHub’s introductory documentation on forking and pull requests.
 
----
-
 ## 2. Create a Jurisdiction Subdirectory
 
 Each jurisdiction should create a dedicated subdirectory under jurisdiction-scripts/
 
-Name your directory using the jurisdiction abbreviation used for `reporting_jurisdiction` in 1CDP (e.g., `CA`, `IL`, `NYC`).  
+Name your directory using the jurisdiction abbreviation used for `reporting_jurisdiction` in 1CDP (e.g., `CA`, `IL`, `NZ`).  
 If your directory already exists, add new content within that folder.
-
----
 
 ## 3. Add Each Project or Analytic Workflow as Its Own Folder
 
 Within your jurisdiction directory, create a separate folder for each contributed project, tool, or analytic workflow.
-
----
 
 ## 4. Do Not Include Sensitive Information
 
@@ -48,8 +40,6 @@ This includes, but is not limited to:
 - Restricted or proprietary jurisdictional datasets  
 - Any information not intended for public dissemination  
 
----
-
 ## 5. Include a README for Each Project
 
 Each project folder must include a `README.md` that contains:
@@ -60,8 +50,6 @@ Each project folder must include a `README.md` that contains:
 - Installation instructions, dependencies, and how to run the code  
 - Notes on data needs, assumptions, limitations, or intended use  
 
----
-
 ## 6. (Strongly Recommended) Exclude Large or Reproducible Dependencies
 
 To keep the repository lightweight and reproducible:
@@ -71,6 +59,4 @@ To keep the repository lightweight and reproducible:
 - Instead, declare dependencies using standard environment or package-management files, such as:
   - `renv` for R  
   - `requirements.txt` for Python  
-
----
 

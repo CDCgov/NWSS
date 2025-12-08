@@ -2,6 +2,18 @@
 
 This is the data repository for the [National Wastewater Surveillance System (NWSS)](https://www.cdc.gov/nwss/wastewater-surveillance/index.html). The intended purpose of this data repository is to facilite code sharing between jurisdictions and CDC. 
 
+# National Wastewater Surveillance System (NWSS) Data Repository
+
+This is the data repository for the [National Wastewater Surveillance System (NWSS)](https://www.cdc.gov/nwss/wastewater-surveillance/index.html).  
+The intended purpose of this repository is to facilitate code sharing between jurisdictions, CDC, and the public.
+
+Jurisdiction-contributed projects are contained within the `jurisdiction-scripts/` directory and are created and maintained by the respective jurisdictions.
+
+For detailed guidance on how jurisdictions should submit code—including directory structure, contribution workflow, and required documentation—please refer to:
+
+**[Submission_Guide_for_Jurisdictions.md](Submission_Guide_for_Jurisdictions.md)**
+
+
 **Please reach out to nwss@cdc.gov if you have any questions**.
 
 ## General disclaimer
