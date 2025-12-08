@@ -1,0 +1,46 @@
+wwtp_name,sitename_id,System,pcr_target,activation_start,expected_end,activation_end,public_repository,participation_status,notes
+Utility1,UA,SSS,FLUAV,8/25/2023,,,Publish,Active,
+Utility1,UA,SSS,FLUBV,8/25/2023,,,Publish,Active,
+Utility1,UA,SSS,RSV_A,8/25/2023,,9/30/2024,Publish,Inactive,switched to PanRSV on 9/30/2024
+Utility1,UA,SSS,RSV_B,8/25/2023,,9/30/2024,Publish,Inactive,switched to PanRSV on 9/30/2024
+Utility1,UA,SSS,sars-cov-2,2/24/2022,,,Publish,Active,
+Utility1,UA,SSS,PanRSV,6/24/2024,,,Publish,Active,started side by side results with PanRSV
+Utility1,UA,SSS,H1,8/25/2023,,,Publish,Active,
+Utility1,UA,SSS,H3,8/25/2023,,,Publish,Active,
+Utility1,UA,SSS,H5,8/25/2023,,,Publish,Active,
+Utility2,UB,SSS,FLUAV,9/29/2023,,,Publish,Active,
+Utility2,UB,SSS,FLUBV,9/29/2023,,,Publish,Active,
+Utility2,UB,SSS,RSV_A,9/29/2023,,9/30/2024,Publish,Inactive,switched to PanRSV on 9/30/2024
+Utility2,UB,SSS,RSV_B,9/29/2023,,9/30/2024,Publish,Inactive,switched to PanRSV on 9/30/2024
+Utility2,UB,SSS,sars-cov-2,8/13/2020,,,Publish,Active,
+Utility2,UB,SSS,PanRSV,6/24/2024,,,Publish,Active,started side by side results with PanRSV
+Utility2,UB,SSS,H1,9/29/2023,,,Publish,Active,
+Utility2,UB,SSS,H3,9/29/2023,,,Publish,Active,
+Utility2,UB,SSS,H5,9/29/2023,,,Publish,Active,
+Utility3,UC,SSS,FLUAV,8/23/2023,,,Publish,Active,
+Utility3,UC,SSS,FLUBV,8/23/2023,,,Publish,Active,
+Utility3,UC,SSS,RSV_A,8/23/2023,,9/30/2024,Publish,Inactive,switched to PanRSV on 9/30/2024
+Utility3,UC,SSS,RSV_B,8/23/2023,,9/30/2024,Publish,Inactive,switched to PanRSV on 9/30/2024
+Utility3,UC,SSS,sars-cov-2,1/31/2022,,,Publish,Active,
+Utility3,UC,SSS,PanRSV,6/24/2024,,,Publish,Active,started side by side results with PanRSV
+Utility3,UC,SSS,H1,8/23/2023,,,Publish,Active,
+Utility3,UC,SSS,H3,8/23/2023,,,Publish,Active,
+Utility3,UC,SSS,H5,8/23/2023,,,Publish,Active,
+Utility5,UE,SSS,FLUAV,8/29/2023,,,Publish,Active,
+Utility5,UE,SSS,FLUBV,8/29/2023,,,Publish,Active,
+Utility5,UE,SSS,RSV_A,8/29/2023,,9/30/2024,Publish,Inactive,switched to PanRSV on 9/30/2024
+Utility5,UE,SSS,RSV_B,8/29/2023,,9/30/2024,Publish,Inactive,switched to PanRSV on 9/30/2024
+Utility5,UE,SSS,sars-cov-2,1/2/2022,,,Publish,Active,
+Utility5,UE,SSS,PanRSV,6/24/2024,,,Publish,Active,started side by side results with PanRSV
+Utility5,UE,SSS,H1,8/29/2023,,,Publish,Active,
+Utility5,UE,SSS,H3,8/29/2023,,,Publish,Active,
+Utility5,UE,SSS,H5,8/29/2023,,,Publish,Active,
+Utility4,UD,SSS,FLUAV,8/31/2023,,,Publish,Active,
+Utility4,UD,SSS,FLUBV,8/31/2023,,,Publish,Active,
+Utility4,UD,SSS,RSV_A,8/31/2023,,9/30/2024,Publish,Inactive,switched to PanRSV on 9/30/2024
+Utility4,UD,SSS,RSV_B,8/31/2023,,9/30/2024,Publish,Inactive,switched to PanRSV on 9/30/2024
+Utility4,UD,SSS,sars-cov-2,2/28/2022,,,Publish,Active,
+Utility4,UD,SSS,PanRSV,6/24/2024,,,Publish,Active,started side by side results with PanRSV
+Utility4,UD,SSS,H1,8/31/2023,,,Publish,Active,
+Utility4,UD,SSS,H3,8/31/2023,,,Publish,Active,
+Utility4,UD,SSS,H5,8/31/2023,,,Publish,Active,

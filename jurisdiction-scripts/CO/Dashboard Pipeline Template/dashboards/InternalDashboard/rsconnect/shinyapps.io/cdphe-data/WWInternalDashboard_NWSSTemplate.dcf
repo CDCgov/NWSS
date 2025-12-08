@@ -1,0 +1,11 @@
+name: WWInternalDashboard_NWSSTemplate
+title:
+username:
+account: cdphe-data
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 15147641
+bundleId: 10866840
+url: https://cdphe-data.shinyapps.io/WWInternalDashboard_NWSSTemplate/
+when: 1757081574.05469
+lastSyncTime: 1757081574.0547
