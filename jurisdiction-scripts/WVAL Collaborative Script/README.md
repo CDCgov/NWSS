@@ -54,7 +54,7 @@ NOTE: Since each jurisdiction's data looks different this code will likely need 
     
     Influenza A:
       - Very Low: Up to 2.7
-      - Low: Greater than 2.7 and up to 6.5	
+      - Low: Greater than 2.7 and up to 6.2	
       - Moderate: Greater than 6.2 and up to 11.2	
       - High: Greater than 11.2 and up to 17.6	
       - Very High: Greater than 17.6
