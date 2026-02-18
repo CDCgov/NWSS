@@ -5,7 +5,7 @@
 To promote transparency, reproducibility, and shared learning, this repository is intended for collaboration among jurisdictions, CDC, and the public. **All repository contents—including forks, branches, issues, and pull requests—are fully public.**  
 **Do not submit any material that is not appropriate for public release.**
 
-Jurisdictions are encouraged to contribute code, analytic workflows, and tools that support NWSS program goals. Please follow the guidance below when adding materials to this repository.
+Jurisdictions are encouraged to contribute code, analytic workflows, and tools that support NWSS program goals. Please follow the guidance below when adding materials to this repository. Additionally, CDC NWSS does not review submitted code for errors and cannot guarantee that the code will function as intended.
 
 ## 1. Contribute Through Fork and Pull Request
 
