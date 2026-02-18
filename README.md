@@ -8,6 +8,17 @@ For detailed guidance on how jurisdictions should submit code—including direct
 
 **Please reach out to nwss@cdc.gov if you have any questions**.
 
+## CDC NWSS Public Data
+CDC NWSS produces publicly available datasets that are updated weekly.
+
+Public datasets include: 
+  - [CDC Wastewater Data for SARS-CoV-2](https://data.cdc.gov/Public-Health-Surveillance/CDC-Wastewater-Data-for-SARS-CoV-2/j9g8-acpt/about_data)
+  - [CDC Wastewater Data for Influenza A](https://data.cdc.gov/Public-Health-Surveillance/CDC-Wastewater-Data-for-Influenza-A/ymmh-divb/about_data)
+  - [CDC Wastewater Data for Avian Influenza (H5)](https://data.cdc.gov/Public-Health-Surveillance/CDC-Wastewater-Data-for-Avian-Influenza-A-H5-/mtpu-urpp/about_data)
+  - [CDC Wastewater Data for RSV](https://data.cdc.gov/Public-Health-Surveillance/CDC-Wastewater-Data-for-RSV/45cq-cw4i/about_data)
+  - [CDC Wastewater Data for Measles](https://data.cdc.gov/Public-Health-Surveillance/CDC-Wastewater-Data-for-Measles/akvg-8vrb/about_data)
+  - [CDC Wastewater Data for Mpox](https://data.cdc.gov/Public-Health-Surveillance/CDC-Wastewater-Data-for-Mpox/xpxn-rzgz/about_data)
+
 ## Jurisdiction-contributed projects
 Please note that CDC NWSS does not review submitted code for errors and cannot guarantee that the code will function as intended. If you identify errors, please contact the respective maintainer(s) listed in the project's README. 
 
@@ -15,9 +26,11 @@ To view jurisdicton-contributed projects, visit the [jurisdiction-scripts](https
   - [WVAL Collaborative Script](https://github.com/CDCgov/NWSS/tree/master/jurisdiction-scripts/WVAL%20Collaborative%20Script)
     -   **Summary:** A collaborative NWSS CoE R translation of CDC's python code to calculate WVAL for SARS-CoV-2, Influenza, and RSV.
     -   **Date added:** Feb 18, 2026
+    -   **Maintainer(s):** Colorado and Washington
   - [Co/Dashboard Pipeline Template](https://github.com/CDCgov/NWSS/tree/master/jurisdiction-scripts/CO/Dashboard%20Pipeline%20Template)
     - **Summary:** A flexible R-based pipeline template designed for wastewater surveillance jurisdictions to clean, transform, and output data to a secure RShiny dashboard.
     - **Date added:** Dec 8, 2025
+    - **Maintainer(s):** Colorado
 
 ## General disclaimer
 This repository was created for use by CDC programs to collaborate on public health related projects in support of the [CDC mission](https://www.cdc.gov/about/organization/mission.htm).  GitHub is not hosted by the CDC, but is a third party website used by CDC and its partners to share information and collaborate on software. CDC use of GitHub does not imply an endorsement of any one particular service, product, or enterprise. 
