@@ -1,5 +1,7 @@
 # National Wastewater Surveillance System (NWSS) Data Repository
 
+Organization: CDC/NCEZID/DIDRI/RRRSB
+
 This is the data repository for the [National Wastewater Surveillance System (NWSS)](https://www.cdc.gov/nwss). The intended purpose of this repository is to facilitate code sharing between jurisdictions, CDC, and the public.
 
 Jurisdiction-contributed projects are contained within the `jurisdiction-scripts` directory and are created and maintained by the respective jurisdictions. 
